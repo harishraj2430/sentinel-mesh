@@ -549,7 +549,7 @@ export default function CaseReport({ report }) {
                   color: "#05070e",
                   padding: "6px 16px",
                   borderRadius: "4px",
-                  fontFamily: "'Rajdhani', sans-serif",
+                  fontFamily: "var(--font-tech)",
                   fontSize: "0.85rem",
                   fontWeight: 700,
                   letterSpacing: "1px",

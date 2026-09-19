@@ -37,9 +37,9 @@ export default function Navbar({ onOpenGmail, onScrollToUpload }) {
           <Shield size={20} color="#00f3ff" />
         </div>
         <div>
-          <span className="font-tech" style={{
+          <span className="font-orbitron" style={{
             fontSize: "1.2rem",
-            fontWeight: 700,
+            fontWeight: 800,
             letterSpacing: "3px",
             color: "#f8fafc",
             display: "block",

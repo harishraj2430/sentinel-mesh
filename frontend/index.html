@@ -7,7 +7,19 @@
     <meta name="theme-color" content="#05070e" />
     <title>SENTINEL MESH — Email Threat Investigation Engine</title>
 
-    <!-- Google Fonts: Instrument Serif, Syne, Orbitron, Rajdhani, Plus Jakarta Sans, JetBrains Mono -->
+    <!-- Inline script to set initial theme immediately (prevents theme flash) -->
+    <script>
+      (function() {
+        try {
+          var savedTheme = localStorage.getItem('theme');
+          var systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var theme = savedTheme || (systemPrefersDark ? 'dark' : 'light');
+          document.documentElement.setAttribute('data-theme', theme);
+        } catch (e) {}
+      })();
+    </script>
+
+    <!-- Google Fonts fallbacks -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500;600;700&family=Orbitron:wght@500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Rajdhani:wght@500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">

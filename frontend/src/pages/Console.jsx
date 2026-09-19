@@ -49,17 +49,17 @@ export default function Console() {
   });
 
   return (
-    <div style={{ padding: "110px 6% 80px", minHeight: "100vh", background: "#05070e" }}>
+    <div style={{ padding: "clamp(80px, 10vh, 110px) 5% 60px", minHeight: "100dvh", background: "var(--bg)" }}>
       {/* Console Top Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "16px", marginBottom: "32px", borderBottom: "1px solid rgba(0, 243, 255, 0.15)", paddingBottom: "24px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "16px", marginBottom: "32px", borderBottom: "1px solid var(--border)", paddingBottom: "20px" }}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <Terminal size={24} color="#00f3ff" />
-            <h1 className="font-tech" style={{ fontSize: "2rem", letterSpacing: "2px", color: "#f8fafc" }}>
+            <Terminal size={24} color="var(--accent)" />
+            <h1 className="font-tech" style={{ fontSize: "clamp(1.5rem, 2.5vw, 2rem)", letterSpacing: "2px", color: "var(--text)" }}>
               SECURITY OPERATIONS CONSOLE (SOC)
             </h1>
           </div>
-          <p className="mono" style={{ color: "#94a3b8", fontSize: "0.85rem", marginTop: "6px" }}>
+          <p className="mono" style={{ color: "var(--muted)", fontSize: "0.85rem", marginTop: "6px" }}>
             CASE ARTIFACTS, TELEMETRY REPOSITORY & FORENSIC ATTRIBUTION
           </p>
         </div>
@@ -69,17 +69,17 @@ export default function Console() {
           display: "flex",
           alignItems: "center",
           gap: "12px",
-          background: "rgba(9, 13, 24, 0.8)",
-          border: "1px solid rgba(0, 243, 255, 0.2)",
+          background: "var(--bg-card)",
+          border: "1px solid var(--border)",
           borderRadius: "8px",
           padding: "10px 18px"
         }}>
           <span className="pulse-dot" />
           <div>
-            <p className="font-tech" style={{ fontSize: "0.85rem", color: "#fff", fontWeight: 600 }}>
+            <p className="font-tech" style={{ fontSize: "0.85rem", color: "var(--text)", fontWeight: 600 }}>
               FORENSIC ENGINE STATUS
             </p>
-            <p className="mono" style={{ fontSize: "0.75rem", color: "#00f3ff" }}>
+            <p className="mono" style={{ fontSize: "0.75rem", color: "var(--accent)" }}>
               {engineHealth.status === "online" ? "SENTINEL CORE ONLINE (PORT 8000/8001)" : "SIMULATION MODE ACTIVE"}
             </p>
           </div>
@@ -87,7 +87,7 @@ export default function Console() {
       </div>
 
       {/* Main Layout: Case Archive List on Left, Deep Case Inspector on Right */}
-      <div style={{ display: "grid", gridTemplateColumns: "360px 1fr", gap: "28px", alignItems: "start" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "24px", alignItems: "start", minWidth: 0 }}>
         
         {/* Left: Case Repository Sidebar */}
         <div className="cyber-panel" style={{ borderRadius: "8px", border: "1px solid rgba(0, 243, 255, 0.2)", overflow: "hidden" }}>

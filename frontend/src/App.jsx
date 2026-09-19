@@ -7,13 +7,15 @@ import Console from "./pages/Console";
 export default function App() {
   return (
     <BrowserRouter>
-      <div style={{ background: "#050505", minHeight: "100vh" }}>
+      <div style={{ background: "var(--bg)", color: "var(--text)", minHeight: "100dvh", display: "flex", flexDirection: "column" }}>
         <CustomCursor />
         <Navbar />
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/console" element={<Console />} />
-        </Routes>
+        <div style={{ flex: 1, minWidth: 0, minHeight: 0 }}>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/console" element={<Console />} />
+          </Routes>
+        </div>
       </div>
     </BrowserRouter>
   );

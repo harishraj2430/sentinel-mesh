@@ -87,7 +87,7 @@ export default function LandingPage() {
   };
 
   return (
-    <div style={{ background: "#05070e", minHeight: "100vh" }}>
+    <div style={{ background: "var(--bg)", minHeight: "100dvh" }}>
       {/* 1. CINEMATIC HERO */}
       <Hero
         onOpenGmail={() => setIsGmailModalOpen(true)}

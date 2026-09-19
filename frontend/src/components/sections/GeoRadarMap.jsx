@@ -21,6 +21,7 @@ export default function GeoRadarMap({ geoData, relayHops = [] }) {
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [selectedDeviceIndex, setSelectedDeviceIndex] = useState(0);
   const [deviceFilter, setDeviceFilter] = useState("ALL");
+  const [mapStyle, setMapStyle] = useState("tactical"); // 'tactical' | 'cyber'
   const [isLight, setIsLight] = useState(false);
   const mapRef = useRef(null);
 
@@ -257,6 +258,46 @@ export default function GeoRadarMap({ geoData, relayHops = [] }) {
           onMouseLeave={handleMouseUp}
           onWheel={handleWheel}
         >
+          {/* Style Switcher: Tactical Blue Relief vs Global Cyber Network */}
+          <div style={{ position: "absolute", top: "14px", left: "14px", zIndex: 20, display: "flex", gap: "6px" }}>
+            <button
+              onClick={() => setMapStyle("tactical")}
+              style={{
+                background: mapStyle === "tactical" ? "var(--accent)" : "var(--bg-card)",
+                color: mapStyle === "tactical" ? "#05070e" : "var(--text)",
+                border: "1px solid var(--border)",
+                borderRadius: "4px",
+                padding: "4px 10px",
+                fontFamily: "var(--font-tech)",
+                fontSize: "11px",
+                fontWeight: 700,
+                letterSpacing: "1px",
+                cursor: "pointer",
+                backdropFilter: "blur(8px)"
+              }}
+            >
+              TACTICAL TOPOGRAPHY
+            </button>
+            <button
+              onClick={() => setMapStyle("cyber")}
+              style={{
+                background: mapStyle === "cyber" ? "var(--accent)" : "var(--bg-card)",
+                color: mapStyle === "cyber" ? "#05070e" : "var(--text)",
+                border: "1px solid var(--border)",
+                borderRadius: "4px",
+                padding: "4px 10px",
+                fontFamily: "var(--font-tech)",
+                fontSize: "11px",
+                fontWeight: 700,
+                letterSpacing: "1px",
+                cursor: "pointer",
+                backdropFilter: "blur(8px)"
+              }}
+            >
+              CYBER MESH NODES
+            </button>
+          </div>
+
           {/* SVG Map Container with Pan/Zoom */}
           <div
             style={{
@@ -269,17 +310,27 @@ export default function GeoRadarMap({ geoData, relayHops = [] }) {
               transition: isPanning ? "none" : "transform 0.15s ease-out"
             }}
           >
-            {/* Embedded Clean Vector World Map */}
+            {/* Embedded Clean Vector/Raster World Map */}
             <svg
               viewBox="0 0 1000 500"
               style={{
                 width: "100%",
                 height: "100%",
-                color: isLight ? "#0284c7" : "#00f3ff",
                 pointerEvents: "none"
               }}
             >
-              <image href="/assets/world-map.svg" width="1000" height="500" />
+              {/* Image Layer: Uses user's high-res tactical blue topography or cyber network mesh */}
+              <image
+                href={mapStyle === "tactical" ? "/assets/world-map.png" : "/assets/world-map-network.jpg"}
+                width="1000"
+                height="500"
+                preserveAspectRatio="none"
+                style={{
+                  filter: isLight 
+                    ? "brightness(1.05) contrast(1.1) saturate(1.1)" 
+                    : "brightness(0.95) contrast(1.15) saturate(1.2)"
+                }}
+              />
 
               {/* Transit vectors connecting devices */}
               {loginDevices.length > 1 && (

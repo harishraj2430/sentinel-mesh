@@ -442,16 +442,29 @@ export default function CaseReport({ report }) {
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px", borderBottom: "1px solid rgba(0, 243, 255, 0.15)", paddingBottom: "12px", marginBottom: "16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <Hash size={20} color="#00f3ff" />
-            <h4 className="font-tech" style={{ fontSize: "1.15rem", letterSpacing: "1.5px", color: "#f1f5f9" }}>
+            <Hash size={20} color="var(--accent)" />
+            <h4 className="font-tech" style={{ fontSize: "1.15rem", letterSpacing: "1.5px", color: "var(--text)" }}>
               BLOCKCHAIN EVIDENCE VAULT & IMMUTABLE LEDGER
             </h4>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <span className="mono" style={{ fontSize: "0.75rem", color: "#10b981", background: "rgba(16, 185, 129, 0.1)", border: "1px solid rgba(16, 185, 129, 0.3)", padding: "3px 8px", borderRadius: "3px" }}>
+            <span className="mono" style={{ fontSize: "0.75rem", color: "var(--success-green)", background: "rgba(16, 185, 129, 0.1)", border: "1px solid var(--success-green)", padding: "3px 8px", borderRadius: "3px" }}>
               BLOCK #{report.blockchain?.block_index || "714920"} ANCHORED
             </span>
           </div>
+        </div>
+
+        {/* Why a Ledger? Explainer Tooltip Card */}
+        <div style={{ background: "rgba(0, 243, 255, 0.05)", border: "1px solid var(--border)", borderRadius: "6px", padding: "12px 16px", marginBottom: "18px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+            <Lock size={14} color="var(--accent)" />
+            <span className="font-tech" style={{ fontSize: "0.82rem", color: "var(--accent)", fontWeight: 700, letterSpacing: "1px" }}>
+              WHY AN IMMUTABLE LEDGER?
+            </span>
+          </div>
+          <p style={{ fontSize: "0.82rem", color: "var(--text-secondary)", lineHeight: 1.5, margin: 0 }}>
+            Every incident and login event is sealed into a SHA-256 hash chain. Change any record and every later block stops matching, so evidence tampering is instantly visible.
+          </p>
         </div>
 
         {/* Blockchain Data Matrix */}

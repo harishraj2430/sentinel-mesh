@@ -147,6 +147,7 @@ export default function LandingPage() {
           <UploadCard
             onFileSelected={handleFileSelected}
             onSelectSample={handleSampleSelected}
+            onClearFile={() => setReport(null)}
           />
 
           {/* 5. 12-STAGE ANIMATED INVESTIGATION SEQUENCE */}

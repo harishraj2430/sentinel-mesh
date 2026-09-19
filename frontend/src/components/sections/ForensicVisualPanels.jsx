@@ -136,8 +136,6 @@ export default function ForensicVisualPanels() {
           gridTemplateColumns: "1.2fr 1fr"
         }}
       >
-        <div className="scanner-line" />
-
         {/* Visual Graphics Background representation */}
         <div style={{
           position: "relative",

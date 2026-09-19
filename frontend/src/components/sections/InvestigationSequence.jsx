@@ -123,7 +123,6 @@ export default function InvestigationSequence({ report, isRunning, onComplete })
         position: "relative",
         overflow: "hidden"
       }}>
-        <div className="scanner-line" />
         <div style={{ display: "flex", alignItems: "flex-start", gap: "18px" }}>
           <div style={{
             background: "rgba(0, 243, 255, 0.1)",

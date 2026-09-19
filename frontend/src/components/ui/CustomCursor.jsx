@@ -129,7 +129,7 @@ export default function CustomCursor() {
             padding: "2px 6px",
             backdropFilter: "blur(6px)",
             boxShadow: "0 0 10px rgba(0, 243, 255, 0.25)",
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: "var(--font-mono)",
             fontSize: "9px",
             letterSpacing: "0.8px",
             color: isNode ? "#ff2e4d" : "#00f3ff",

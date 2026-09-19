@@ -95,14 +95,14 @@ const styles = {
     marginBottom: "14px",
   },
   stageTitle: {
-    fontFamily: "Cinzel, serif",
+    fontFamily: "var(--font-h1)",
     fontSize: "clamp(2rem, 5vw, 4rem)",
     lineHeight: 1,
     marginBottom: "18px",
   },
   stageDescription: {
     color: "#999",
-    fontFamily: "Inter, sans-serif",
+    fontFamily: "var(--font-body)",
     lineHeight: 1.6,
     maxWidth: "480px",
   },

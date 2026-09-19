@@ -62,7 +62,7 @@ export default function Navbar({ onOpenGmail, onScrollToUpload }) {
             textDecoration: "none",
             fontSize: "0.85rem",
             letterSpacing: "1.5px",
-            fontFamily: "'Chakra Petch', sans-serif",
+            fontFamily: "var(--font-ui)",
             fontWeight: 600,
             position: "relative"
           }}
@@ -91,7 +91,7 @@ export default function Navbar({ onOpenGmail, onScrollToUpload }) {
             textDecoration: "none",
             fontSize: "0.85rem",
             letterSpacing: "1.5px",
-            fontFamily: "'Chakra Petch', sans-serif",
+            fontFamily: "var(--font-ui)",
             fontWeight: 600,
             display: "flex",
             alignItems: "center",
@@ -129,7 +129,7 @@ export default function Navbar({ onOpenGmail, onScrollToUpload }) {
               borderRadius: "4px",
               color: "#05070e",
               padding: "8px 16px",
-              fontFamily: "'Chakra Petch', sans-serif",
+              fontFamily: "var(--font-ui)",
               fontSize: "0.85rem",
               fontWeight: 700,
               letterSpacing: "1.5px",

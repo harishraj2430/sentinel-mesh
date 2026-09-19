@@ -107,7 +107,7 @@ export default function Console() {
                     background: filter === f ? "rgba(0, 243, 255, 0.2)" : "rgba(5, 7, 14, 0.6)",
                     border: `1px solid ${filter === f ? "#00f3ff" : "rgba(255,255,255,0.06)"}`,
                     color: filter === f ? "#00f3ff" : "#94a3b8",
-                    fontFamily: "'Chakra Petch', sans-serif",
+                    fontFamily: "var(--font-ui)",
                     fontSize: "0.75rem",
                     fontWeight: 600,
                     borderRadius: "4px",

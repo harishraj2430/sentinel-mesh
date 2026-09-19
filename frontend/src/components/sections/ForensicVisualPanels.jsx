@@ -109,7 +109,7 @@ export default function ForensicVisualPanels() {
                 color: isActive ? "#00f3ff" : "#94a3b8",
                 padding: "10px 18px",
                 borderRadius: "6px",
-                fontFamily: "'Chakra Petch', sans-serif",
+                fontFamily: "var(--font-ui)",
                 fontSize: "0.85rem",
                 fontWeight: 600,
                 letterSpacing: "1px",

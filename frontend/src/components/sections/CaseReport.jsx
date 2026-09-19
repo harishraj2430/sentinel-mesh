@@ -68,7 +68,7 @@ export default function CaseReport({ report }) {
               color: "#00f3ff",
               padding: "8px 16px",
               borderRadius: "4px",
-              fontFamily: "'Chakra Petch', sans-serif",
+              fontFamily: "var(--font-ui)",
               fontSize: "0.85rem",
               fontWeight: 600,
               cursor: "pointer",
@@ -513,7 +513,7 @@ export default function CaseReport({ report }) {
                   color: tamperSimulated ? "#ff2e4d" : "#94a3b8",
                   padding: "6px 12px",
                   borderRadius: "4px",
-                  fontFamily: "'JetBrains Mono', monospace",
+                  fontFamily: "var(--font-mono)",
                   fontSize: "0.75rem",
                   cursor: "pointer"
                 }}

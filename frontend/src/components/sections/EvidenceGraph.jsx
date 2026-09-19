@@ -14,8 +14,17 @@ function FloatingInspectorPortal({ node, onClose, isLight }) {
   useEffect(() => {
     if (!hasUserMoved) {
       const padding = 20;
-      const initialX = Math.min(window.innerWidth - 380 - padding, Math.max(padding, window.innerWidth * 0.58));
-      const initialY = Math.min(window.innerHeight - 380 - padding, Math.max(padding, 140));
+      const panelW = 380;
+      const panelH = 380;
+      // Center the panel horizontally, clamped to viewport
+      const initialX = Math.min(
+        window.innerWidth - panelW - padding,
+        Math.max(padding, (window.innerWidth - panelW) / 2)
+      );
+      const initialY = Math.min(
+        window.innerHeight - panelH - padding,
+        Math.max(padding, 120)
+      );
       setPosition({ x: initialX, y: initialY });
     }
   }, [node?.id, hasUserMoved]);
@@ -569,9 +578,9 @@ export default function EvidenceGraph({ report }) {
       </div>
 
       {/* Floating Draggable Portal Inspector (Fix 7) */}
-      {(clickedNode || hoveredNode) && (
+      {clickedNode && (
         <FloatingInspectorPortal
-          node={clickedNode || hoveredNode}
+          node={clickedNode}
           onClose={() => { setClickedNode(null); setHoveredNode(null); }}
           isLight={isLight}
         />

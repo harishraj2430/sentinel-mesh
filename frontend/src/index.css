@@ -1,38 +1,23 @@
-/* Local Font Face Definitions (with size-adjust fallbacks) */
+/* New 4-Font System */
 @font-face {
-  font-family: "Researcher";
-  src: url("/fonts/Researcher.woff2") format("woff2");
-  font-weight: 600 800;
+  font-family: "Cyberform";
+  src: url("/fonts/cyberform-demo.woff2") format("woff2");
   font-display: swap;
-  size-adjust: 100%;
 }
 @font-face {
-  font-family: "Coder";
-  src: url("/fonts/Coder.woff2") format("woff2");
-  font-weight: 400 700;
+  font-family: "CyberCopix";
+  src: url("/fonts/cyber-copix.woff2") format("woff2");
   font-display: swap;
-  size-adjust: 100%;
 }
 @font-face {
-  font-family: "Arfumes";
-  src: url("/fonts/Arfumes.woff2") format("woff2");
-  font-weight: 400 700;
+  font-family: "CyberAlert";
+  src: url("/fonts/cyber-alert.woff2") format("woff2");
   font-display: swap;
-  size-adjust: 100%;
 }
 @font-face {
-  font-family: "XCOPR";
-  src: url("/fonts/XCOPR.woff2") format("woff2");
-  font-weight: 700 900;
+  font-family: "LunarEscape";
+  src: url("/fonts/lunar-escape.woff2") format("woff2");
   font-display: swap;
-  size-adjust: 100%;
-}
-@font-face {
-  font-family: "Cyber";
-  src: url("/fonts/Cyber.woff2") format("woff2");
-  font-weight: 500 700;
-  font-display: swap;
-  size-adjust: 100%;
 }
 
 * {
@@ -43,16 +28,20 @@
 
 :root {
   /* FONT SYSTEM TOKENS */
-  --font-display: "Researcher", "Syne", sans-serif;
-  --font-mono: "Coder", "JetBrains Mono", "Fira Code", monospace;
-  --font-accent: "Arfumes", "Instrument Serif", Georgia, serif;
-  --font-brand: "XCOPR", "Orbitron", sans-serif;
-  --font-tech: "Cyber", "Rajdhani", sans-serif;
-  --font-body: "Geist", "Inter", "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-h1:    "Cyberform", "Geist", system-ui, sans-serif;
+  --font-ui:    "CyberCopix", "Geist", system-ui, sans-serif;
+  --font-alert: "CyberAlert", "Geist", sans-serif;
+  --font-pixel: "LunarEscape", "JetBrains Mono", monospace;
+  --font-body:  "Geist", "Inter", system-ui, sans-serif;
+  --font-mono:  "JetBrains Mono", ui-monospace, monospace;
 
-  /* Legacy mappings */
-  --font-serif: var(--font-accent);
-  --font-orbitron: var(--font-brand);
+  /* Backward-compat aliases for existing CSS classes */
+  --font-display: var(--font-h1);
+  --font-tech: var(--font-ui);
+  --font-brand: var(--font-ui);
+  --font-accent: var(--font-ui);
+  --font-serif: var(--font-ui);
+  --font-orbitron: var(--font-ui);
 
   /* DARK THEME (Default) */
   --bg: #05070e;
@@ -138,16 +127,25 @@ html, body {
 }
 
 /* Typography mappings */
-.font-display { font-family: var(--font-display); }
-.font-tech { font-family: var(--font-tech); }
-.font-orbitron { font-family: var(--font-brand); }
-.font-serif { font-family: var(--font-accent); }
+.font-display { font-family: var(--font-h1); }
+.font-tech { font-family: var(--font-ui); }
+.font-orbitron { font-family: var(--font-ui); }
+.font-serif { font-family: var(--font-ui); }
 .mono { font-family: var(--font-mono); }
+.alert-label { font-family: var(--font-alert); text-transform: uppercase; letter-spacing: 0.06em; }
+.hud, .counter { font-family: var(--font-pixel); -webkit-font-smoothing: none; }
 
-h1, h2, h3 {
-  font-family: var(--font-display);
+h1 {
+  font-family: var(--font-h1);
   font-weight: 800;
   letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+h2, h3 {
+  font-family: var(--font-ui);
+  font-weight: 700;
+  letter-spacing: 0.04em;
   color: var(--text);
 }
 
@@ -160,13 +158,13 @@ h3 {
 }
 
 h4, h5, h6 {
-  font-family: var(--font-tech);
+  font-family: var(--font-ui);
   font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--text);
 }
 
-p, span, div, li {
+p, span, div, li, input, textarea, label {
   font-family: var(--font-body);
   color: var(--text-secondary);
 }

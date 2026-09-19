@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 500" width="1000" height="500">
+  <defs>
+    <style>
+      .continent { fill: currentColor; fill-opacity: 0.12; stroke: currentColor; stroke-opacity: 0.45; stroke-width: 1.2; stroke-linejoin: round; }
+      .grid-line { stroke: currentColor; stroke-opacity: 0.08; stroke-width: 0.7; stroke-dasharray: 4 4; }
+    </style>
+  </defs>
+
+  <!-- Equirectangular Lat/Lon Coordinate Grid -->
+  <g class="grid-line">
+    <line x1="0" y1="125" x2="1000" y2="125" />
+    <line x1="0" y1="250" x2="1000" y2="250" />
+    <line x1="0" y1="375" x2="1000" y2="375" />
+    <line x1="250" y1="0" x2="250" y2="500" />
+    <line x1="500" y1="0" x2="500" y2="500" />
+    <line x1="750" y1="0" x2="750" y2="500" />
+  </g>
+
+  <!-- Continents: High-Fidelity Equirectangular Projection -->
+  <g class="continent">
+    <!-- North America -->
+    <path d="M 120 70 L 160 50 L 220 50 L 290 60 L 270 95 L 230 110 L 245 150 L 210 190 L 185 240 L 165 220 L 140 180 L 125 150 L 95 120 L 75 90 Z M 190 35 L 235 30 L 250 45 L 210 50 Z" />
+    <!-- Greenland -->
+    <path d="M 310 40 L 370 30 L 400 50 L 375 90 L 330 85 L 305 60 Z" />
+    <!-- South America -->
+    <path d="M 245 250 L 290 260 L 340 300 L 320 370 L 285 450 L 260 480 L 245 420 L 225 330 L 220 280 Z" />
+    <!-- Europe -->
+    <path d="M 460 100 L 510 85 L 560 90 L 580 135 L 530 160 L 485 165 L 450 130 Z M 430 105 L 450 100 L 440 130 L 420 120 Z" />
+    <!-- Africa -->
+    <path d="M 450 180 L 530 170 L 590 220 L 600 290 L 550 370 L 500 420 L 470 380 L 440 280 L 430 220 Z M 590 350 L 610 340 L 600 390 L 580 380 Z" />
+    <!-- Asia -->
+    <path d="M 570 90 L 650 70 L 750 65 L 850 90 L 900 140 L 860 190 L 780 210 L 720 190 L 670 230 L 600 200 L 575 145 Z M 640 240 L 700 235 L 720 290 L 665 285 Z M 770 240 L 830 255 L 790 315 L 755 280 Z" />
+    <!-- Australia & New Zealand -->
+    <path d="M 760 360 L 850 350 L 890 400 L 860 450 L 780 445 L 750 400 Z M 900 435 L 925 430 L 920 465 Z" />
+  </g>
+</svg>

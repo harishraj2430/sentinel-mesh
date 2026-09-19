@@ -76,23 +76,27 @@ export default function GmailConnectModal({ isOpen, onClose, sampleCases = [], o
         className="cyber-panel"
         style={{
           width: "100%",
-          maxWidth: getModalWidth(),
+          maxWidth: `min(${getModalWidth()}, calc(100vw - 32px))`,
+          maxHeight: "calc(100dvh - 32px)",
           borderRadius: "12px",
-          border: "1px solid rgba(0, 243, 255, 0.3)",
-          boxShadow: "0 0 50px rgba(0, 243, 255, 0.15)",
+          border: "1px solid var(--border)",
+          boxShadow: "var(--shadow)",
           overflow: "hidden",
-          transition: "max-width 0.3s cubic-bezier(0.16, 1, 0.3, 1)"
+          display: "flex",
+          flexDirection: "column",
+          transition: "max-width 0.25s cubic-bezier(0.16, 1, 0.3, 1)"
         }}
       >
-        {/* Modal Top Bar */}
+        {/* Modal Top Bar (Sticky Header) */}
         <div
           style={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            padding: "16px 24px",
-            background: "rgba(12, 17, 30, 0.95)",
-            borderBottom: "1px solid rgba(0, 243, 255, 0.15)"
+            padding: "14px 20px",
+            background: "var(--bg-card)",
+            borderBottom: "1px solid var(--border-subtle)",
+            flexShrink: 0
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -377,18 +381,19 @@ export default function GmailConnectModal({ isOpen, onClose, sampleCases = [], o
 
         {/* STEP 4: MAILBOX EXPLORER */}
         {step === "mailbox" && (
-          <div>
+          <div style={{ display: "flex", flexDirection: "column", overflow: "hidden", flex: 1 }}>
             {/* Live Active Account Badge Header */}
             <div
               style={{
-                background: "rgba(9, 13, 24, 0.9)",
-                borderBottom: "1px solid rgba(0, 243, 255, 0.15)",
-                padding: "10px 20px",
+                background: "var(--surface)",
+                borderBottom: "1px solid var(--border-subtle)",
+                padding: "10px 18px",
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
                 flexWrap: "wrap",
-                gap: "10px"
+                gap: "10px",
+                flexShrink: 0
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -397,14 +402,14 @@ export default function GmailConnectModal({ isOpen, onClose, sampleCases = [], o
                     width: "8px",
                     height: "8px",
                     borderRadius: "50%",
-                    background: "#10b981",
-                    boxShadow: "0 0 10px #10b981"
+                    background: "var(--success-green)",
+                    boxShadow: "0 0 10px var(--success-green)"
                   }}
                 />
-                <span className="mono" style={{ fontSize: "0.75rem", color: "#10b981", fontWeight: 600 }}>
+                <span className="mono" style={{ fontSize: "0.75rem", color: "var(--success-green)", fontWeight: 600 }}>
                   GMAIL LIVE SESSION ACTIVE:
                 </span>
-                <span className="mono" style={{ fontSize: "0.75rem", color: "#f1f5f9" }}>
+                <span className="mono" style={{ fontSize: "0.75rem", color: "var(--text)" }}>
                   {activeAccount}
                 </span>
               </div>
@@ -413,9 +418,9 @@ export default function GmailConnectModal({ isOpen, onClose, sampleCases = [], o
                   className="mono"
                   style={{
                     fontSize: "0.7rem",
-                    color: "#00f3ff",
+                    color: "var(--accent)",
                     background: "rgba(0, 243, 255, 0.08)",
-                    border: "1px solid rgba(0, 243, 255, 0.2)",
+                    border: "1px solid var(--border)",
                     padding: "2px 8px",
                     borderRadius: "3px"
                   }}
@@ -426,7 +431,7 @@ export default function GmailConnectModal({ isOpen, onClose, sampleCases = [], o
             </div>
 
             {/* Mailbox Split Screen */}
-            <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", minHeight: "480px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", overflowY: "auto", flex: 1, minHeight: 0 }}>
               {/* Left: Email List View */}
               <div
                 style={{

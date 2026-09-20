@@ -1,11 +1,15 @@
 import { useState, useEffect } from "react";
-import { Terminal, Shield, AlertTriangle, CheckCircle, Search, Filter, Database, Hash, Globe, Server, RefreshCw } from "lucide-react";
-import { getSampleCases, analyzeSampleCase, checkHealth } from "../services/api";
+import { Terminal, Shield, AlertTriangle, CheckCircle, Search, Filter, Database, Hash, Globe, Server, RefreshCw, BarChart2, Lock, UserCheck } from "lucide-react";
+import { getSampleCases, analyzeSampleCase, checkHealth, getSession } from "../services/api";
 import CaseReport from "../components/sections/CaseReport";
 import GeoRadarMap from "../components/sections/GeoRadarMap";
 import EvidenceGraph from "../components/sections/EvidenceGraph";
+import ThreatIntelligenceDashboard from "../components/sections/ThreatIntelligenceDashboard";
+import EvidenceVaultView from "../components/sections/EvidenceVaultView";
 
 export default function Console() {
+  const [activeTab, setActiveTab] = useState("CASES"); // "CASES" | "INTEL" | "LEDGER"
+  const [session, setSession] = useState(null);
   const [cases, setCases] = useState([]);
   const [selectedCaseId, setSelectedCaseId] = useState("case-bec-01");
   const [activeReport, setActiveReport] = useState(null);
@@ -15,10 +19,13 @@ export default function Console() {
 
   useEffect(() => {
     async function loadData() {
-      const health = await checkHealth();
+      const [health, sess, sampleList] = await Promise.all([
+        checkHealth(),
+        getSession(),
+        getSampleCases()
+      ]);
       setEngineHealth(health);
-
-      const sampleList = await getSampleCases();
+      setSession(sess);
       setCases(sampleList);
 
       if (sampleList.length > 0) {
@@ -64,33 +71,135 @@ export default function Console() {
           </p>
         </div>
 
-        {/* Engine Status Badge */}
-        <div style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "12px",
-          background: "var(--bg-card)",
-          border: "1px solid var(--border)",
-          borderRadius: "8px",
-          padding: "10px 18px"
-        }}>
-          <span className="pulse-dot" />
-          <div>
-            <p className="font-tech" style={{ fontSize: "0.85rem", color: "var(--text)", fontWeight: 600 }}>
-              FORENSIC ENGINE STATUS
-            </p>
-            <p className="mono" style={{ fontSize: "0.75rem", color: "var(--accent)" }}>
-              {engineHealth.status === "online" ? "SENTINEL CORE ONLINE (PORT 8000/8001)" : "SIMULATION MODE ACTIVE"}
-            </p>
+        {/* User Session & Engine Status Badges */}
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+          {/* User Role Badge */}
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            background: "var(--bg-card)",
+            border: "1px solid var(--border)",
+            borderRadius: "8px",
+            padding: "10px 16px"
+          }}>
+            <UserCheck size={16} color="var(--accent)" />
+            <div>
+              <p className="font-tech" style={{ fontSize: "0.8rem", color: "var(--text)", fontWeight: 600 }}>
+                {session?.active_user?.role?.toUpperCase() || "SOC ANALYST"}
+              </p>
+              <p className="mono" style={{ fontSize: "0.7rem", color: "var(--muted)" }}>
+                {session?.active_user?.email || "analyst@sentinel.mesh"}
+              </p>
+            </div>
+          </div>
+
+          {/* Engine Status Badge */}
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            background: "var(--bg-card)",
+            border: "1px solid var(--border)",
+            borderRadius: "8px",
+            padding: "10px 18px"
+          }}>
+            <span className="pulse-dot" />
+            <div>
+              <p className="font-tech" style={{ fontSize: "0.85rem", color: "var(--text)", fontWeight: 600 }}>
+                FORENSIC ENGINE STATUS
+              </p>
+              <p className="mono" style={{ fontSize: "0.75rem", color: "var(--accent)" }}>
+                {engineHealth.status === "online" ? "SENTINEL CORE ONLINE (PORT 8000/8001)" : "SIMULATION MODE ACTIVE"}
+              </p>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Main Layout: Case Archive List on Left, Deep Case Inspector on Right */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "24px", alignItems: "start", minWidth: 0 }}>
-        
-        {/* Left: Case Repository Sidebar */}
-        <div className="cyber-panel" style={{ borderRadius: "8px", border: "1px solid rgba(0, 243, 255, 0.2)", overflow: "hidden" }}>
+      {/* Main Console Navigation Tabs */}
+      <div style={{
+        display: "flex",
+        gap: "12px",
+        marginBottom: "28px",
+        borderBottom: "1px solid var(--border-subtle)",
+        paddingBottom: "14px",
+        flexWrap: "wrap"
+      }}>
+        <button
+          onClick={() => setActiveTab("CASES")}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            background: activeTab === "CASES" ? "rgba(0, 243, 255, 0.15)" : "var(--bg-card)",
+            border: `1px solid ${activeTab === "CASES" ? "var(--accent)" : "var(--border)"}`,
+            color: activeTab === "CASES" ? "var(--accent)" : "var(--muted)",
+            padding: "10px 20px",
+            borderRadius: "6px",
+            fontFamily: "var(--font-ui)",
+            fontSize: "0.85rem",
+            fontWeight: 700,
+            letterSpacing: "1px",
+            cursor: "pointer"
+          }}
+        >
+          <Database size={16} />
+          INCIDENT CASES
+        </button>
+
+        <button
+          onClick={() => setActiveTab("INTEL")}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            background: activeTab === "INTEL" ? "rgba(0, 243, 255, 0.15)" : "var(--bg-card)",
+            border: `1px solid ${activeTab === "INTEL" ? "var(--accent)" : "var(--border)"}`,
+            color: activeTab === "INTEL" ? "var(--accent)" : "var(--muted)",
+            padding: "10px 20px",
+            borderRadius: "6px",
+            fontFamily: "var(--font-ui)",
+            fontSize: "0.85rem",
+            fontWeight: 700,
+            letterSpacing: "1px",
+            cursor: "pointer"
+          }}
+        >
+          <BarChart2 size={16} />
+          THREAT INTELLIGENCE & FREQUENCY
+        </button>
+
+        <button
+          onClick={() => setActiveTab("LEDGER")}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            background: activeTab === "LEDGER" ? "rgba(0, 243, 255, 0.15)" : "var(--bg-card)",
+            border: `1px solid ${activeTab === "LEDGER" ? "var(--accent)" : "var(--border)"}`,
+            color: activeTab === "LEDGER" ? "var(--accent)" : "var(--muted)",
+            padding: "10px 20px",
+            borderRadius: "6px",
+            fontFamily: "var(--font-ui)",
+            fontSize: "0.85rem",
+            fontWeight: 700,
+            letterSpacing: "1px",
+            cursor: "pointer"
+          }}
+        >
+          <Lock size={16} />
+          EVIDENCE VAULT & BLOCKCHAIN LEDGER
+        </button>
+      </div>
+
+      {activeTab === "INTEL" && <ThreatIntelligenceDashboard />}
+      {activeTab === "LEDGER" && <EvidenceVaultView />}
+
+      {activeTab === "CASES" && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "24px", alignItems: "start", minWidth: 0 }}>
+          {/* Left: Case Repository Sidebar */}
+          <div className="cyber-panel" style={{ borderRadius: "8px", border: "1px solid rgba(0, 243, 255, 0.2)", overflow: "hidden" }}>
           <div style={{ padding: "16px", background: "rgba(12, 17, 30, 0.8)", borderBottom: "1px solid rgba(0, 243, 255, 0.12)" }}>
             <span className="font-tech" style={{ fontSize: "0.95rem", color: "#fff", letterSpacing: "1px", fontWeight: 700 }}>
               INCIDENT CASE LOGS
@@ -203,6 +312,7 @@ export default function Console() {
         </div>
 
       </div>
+      )}
     </div>
   );
 }

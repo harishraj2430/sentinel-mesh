@@ -1,8 +1,10 @@
-﻿import re
+import re
 import dns.resolver
 import socket
 import requests
 from datetime import datetime
+
+socket.setdefaulttimeout(2.5)
 
 def check_spf(domain: str, auth_results_raw: str = "") -> dict:
     header_status = None
@@ -286,21 +288,21 @@ def check_tls_rpt(domain: str) -> dict:
 
 
 def get_whois_info(domain: str) -> dict:
-    """Get WHOIS information for domain"""
+    """Get WHOIS information for domain with fast timeout"""
     try:
         import whois
         w = whois.whois(domain)
         return {
             "found": True,
-            "registrar": w.registrar,
-            "creation_date": str(w.creation_date) if w.creation_date else None,
-            "expiration_date": str(w.expiration_date) if w.expiration_date else None,
-            "updated_date": str(w.updated_date) if w.updated_date else None,
-            "name_servers": w.name_servers if w.name_servers else [],
-            "emails": w.emails if w.emails else [],
-            "org": w.org,
-            "country": w.country,
-            "status": w.status if w.status else []
+            "registrar": getattr(w, "registrar", None),
+            "creation_date": str(w.creation_date) if getattr(w, "creation_date", None) else None,
+            "expiration_date": str(w.expiration_date) if getattr(w, "expiration_date", None) else None,
+            "updated_date": str(w.updated_date) if getattr(w, "updated_date", None) else None,
+            "name_servers": getattr(w, "name_servers", []) or [],
+            "emails": getattr(w, "emails", []) or [],
+            "org": getattr(w, "org", None),
+            "country": getattr(w, "country", None),
+            "status": getattr(w, "status", []) or []
         }
     except Exception as e:
         return {

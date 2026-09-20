@@ -92,6 +92,7 @@ function FloatingInspectorPortal({ node, onClose, isLight }) {
   return createPortal(
     <div
       ref={panelRef}
+      className="floating-inspector-portal"
       role="dialog"
       aria-label={`${node.label} Forensic Telemetry`}
       style={{

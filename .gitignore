@@ -10,3 +10,13 @@ frontend/dist/
 __pycache__/
 *.pyc
 tests/screenshots/
+test-results/
+playwright-report/
+.freebuff/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+Thumbs.db
+.next/

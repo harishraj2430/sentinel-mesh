@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -9,26 +10,59 @@ from app.intel.urls import analyze_all_urls
 from app.intel.attachments import analyze_all_attachments
 from app.report.builder import build_report
 
+# Modular Sentinel Mesh v2 Extensions
+from modules.database import db
+from modules.auth.service import router as auth_router
+from modules.investigations.manager import router as investigations_router
+from modules.threat_intel.engine import router as threat_intel_router, extract_threat_events_from_report
+from modules.evidence.engine import router as evidence_router, register_evidence
+from modules.blockchain.ledger import router as blockchain_router, record_custody_event
+from integrations.gmail.oauth import router as gmail_router
+from modules.extension.routes import router as extension_router
+
 app = FastAPI(
     title="SENTINEL-MESH API",
     description="Live forensic engine for email threat investigation, header forensics, URL intelligence, and network geolocation.",
-    version="2.0.0"
+    version="2.1.0"
 )
+
+# CORS: Read FRONTEND_URL or allow development origins
+frontend_url = os.environ.get("FRONTEND_URL", "").strip().rstrip("/")
+allowed_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000"
+]
+if frontend_url:
+    allowed_origins.append(frontend_url)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins if frontend_url else ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Mount Modular v2 Extension Routers
+app.include_router(auth_router)
+app.include_router(investigations_router)
+app.include_router(threat_intel_router)
+app.include_router(evidence_router)
+app.include_router(blockchain_router)
+app.include_router(gmail_router)
+app.include_router(extension_router)
+
 @app.get("/api/health")
+@app.get("/health")
 def health():
+    db_status = db.ping()
     return {
         "status": "online",
-        "engine": "Sentinel Mesh Forensic Core v2.0",
-        "threat_intel_active": True
+        "engine": "Sentinel Mesh Forensic Core v2.1",
+        "threat_intel_active": True,
+        "database": db_status
     }
 
 SAMPLE_CASES = [
@@ -149,6 +183,111 @@ def analyze_sample_case(case_id: str):
 
     header_result = run_header_forensics(email_obj)
     geo_result = trace_origin(header_result["relay_chain"])
+
+    # Deterministic geo overrides for sample cases to ensure consistent results
+    SAMPLE_GEO_OVERRIDES = {
+        "185.220.101.45": {
+            "ip": "185.220.101.45",
+            "hostname": "tor-exit-relay-45.torservers.net",
+            "verdict": "resolved",
+            "asn": "AS60729",
+            "org": "Zwiebelfreunde e.V. (Tor Exit)",
+            "city": "Amsterdam",
+            "region": "North Holland",
+            "country": "Netherlands",
+            "country_code": "NL",
+            "approximate_location": "Amsterdam, North Holland, Netherlands",
+            "lat": 52.3676,
+            "lon": 4.9041,
+            "network_type": {
+                "category": "Tor Exit Node / Bulletproof Hosting",
+                "is_datacenter": True,
+                "risk_modifier": 35,
+                "risk_label": "Tor Anonymity Network — High Risk Infrastructure"
+            },
+            "threat_intel": {"is_tor": True, "is_vpn": False, "is_proxy": False, "is_datacenter": True, "is_malicious": True, "reputation": "malicious", "threat_types": ["TOR_EXIT_NODE"], "last_seen": None},
+            "location_disclaimer": "Approximate Network Infrastructure Location (Autonomous System MTA gateway, NOT physical user location)",
+            "all_hops": ["185.220.101.45"],
+            "geolocation_source": "verified_sample"
+        },
+        "45.76.88.192": {
+            "ip": "45.76.88.192",
+            "hostname": "45.76.88.192.vultrusercontent.com",
+            "verdict": "resolved",
+            "asn": "AS20473",
+            "org": "The Constant Company, LLC (Vultr)",
+            "city": "Amsterdam",
+            "region": "North Holland",
+            "country": "Netherlands",
+            "country_code": "NL",
+            "approximate_location": "Amsterdam, North Holland, Netherlands",
+            "lat": 52.3676,
+            "lon": 4.9041,
+            "network_type": {
+                "category": "Datacenter / Cloud Infrastructure",
+                "is_datacenter": True,
+                "risk_modifier": 20,
+                "risk_label": "Cloud VPS — Frequently abused for phishing campaigns"
+            },
+            "threat_intel": {"is_tor": False, "is_vpn": False, "is_proxy": False, "is_datacenter": True, "is_malicious": False, "reputation": "suspicious", "threat_types": [], "last_seen": None},
+            "location_disclaimer": "Approximate Network Infrastructure Location (Autonomous System MTA gateway, NOT physical user location)",
+            "all_hops": ["45.76.88.192"],
+            "geolocation_source": "verified_sample"
+        },
+        "51.15.80.201": {
+            "ip": "51.15.80.201",
+            "hostname": "51-15-80-201.rev.poneytelecom.eu",
+            "verdict": "resolved",
+            "asn": "AS12876",
+            "org": "Scaleway S.A.S. (Online SAS)",
+            "city": "Paris",
+            "region": "Île-de-France",
+            "country": "France",
+            "country_code": "FR",
+            "approximate_location": "Paris, Île-de-France, France",
+            "lat": 48.8566,
+            "lon": 2.3522,
+            "network_type": {
+                "category": "Datacenter / Cloud Infrastructure",
+                "is_datacenter": True,
+                "risk_modifier": 25,
+                "risk_label": "European Cloud Hosting — Used for malware distribution"
+            },
+            "threat_intel": {"is_tor": False, "is_vpn": False, "is_proxy": False, "is_datacenter": True, "is_malicious": True, "reputation": "malicious", "threat_types": ["MALWARE_DISTRIBUTION"], "last_seen": None},
+            "location_disclaimer": "Approximate Network Infrastructure Location (Autonomous System MTA gateway, NOT physical user location)",
+            "all_hops": ["51.15.80.201"],
+            "geolocation_source": "verified_sample"
+        },
+        "209.85.216.67": {
+            "ip": "209.85.216.67",
+            "hostname": "mail-pj1-f67.google.com",
+            "verdict": "resolved",
+            "asn": "AS15169",
+            "org": "Google LLC",
+            "city": "Mountain View",
+            "region": "California",
+            "country": "United States",
+            "country_code": "US",
+            "approximate_location": "Mountain View, California, United States",
+            "lat": 37.3861,
+            "lon": -122.0839,
+            "network_type": {
+                "category": "Commercial Gateway",
+                "is_datacenter": True,
+                "risk_modifier": 0,
+                "risk_label": "Legitimate Corporate Infrastructure (Google Mail)"
+            },
+            "threat_intel": {"is_tor": False, "is_vpn": False, "is_proxy": False, "is_datacenter": True, "is_malicious": False, "reputation": "trusted", "threat_types": [], "last_seen": None},
+            "location_disclaimer": "Approximate Network Infrastructure Location (Google LLC MTA gateway, NOT physical user location)",
+            "all_hops": ["209.85.216.67"],
+            "geolocation_source": "verified_sample"
+        }
+    }
+    
+    # Apply deterministic override if this is a known sample IP
+    detected_ip = geo_result.get("ip", "")
+    if detected_ip in SAMPLE_GEO_OVERRIDES:
+        geo_result = SAMPLE_GEO_OVERRIDES[detected_ip]
     language_result = score_language(email_obj.get("body", ""), email_obj.get("subject", ""))
     url_result = analyze_all_urls(email_obj.get("body", ""))
     attachment_result = analyze_all_attachments(email_obj.get("attachments", []))
@@ -161,6 +300,7 @@ def analyze_sample_case(case_id: str):
         url_result,
         attachment_result
     )
+    extract_threat_events_from_report(report)
     return report
 
 @app.post("/api/analyze")
@@ -182,5 +322,31 @@ async def analyze_email(file: UploadFile = File(...)):
         url_result,
         attachment_result
     )
-
+    extract_threat_events_from_report(report)
     return report
+
+
+@app.post("/api/scan/email")
+async def scan_email(payload: dict = None):
+    raw_text = ""
+    if payload:
+        raw_text = payload.get("email") or payload.get("raw_eml") or payload.get("content") or ""
+    raw = raw_text.encode("utf-8")
+
+    email_obj = parse_eml(raw)
+    header_result = run_header_forensics(email_obj)
+    geo_result = trace_origin(header_result["relay_chain"])
+    language_result = score_language(email_obj.get("body", ""), email_obj.get("subject", ""))
+    url_result = analyze_all_urls(email_obj.get("body", "") + " " + email_obj.get("body_html", ""))
+    attachment_result = analyze_all_attachments(email_obj.get("attachments", []))
+
+    report = build_report(
+        email_obj,
+        header_result,
+        geo_result,
+        language_result,
+        url_result,
+        attachment_result
+    )
+    extract_threat_events_from_report(report)
+    return report

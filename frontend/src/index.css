@@ -1,22 +1,6 @@
-/* New 4-Font System */
 @font-face {
-  font-family: "Cyberform";
-  src: url("/fonts/cyberform-demo.woff2") format("woff2");
-  font-display: swap;
-}
-@font-face {
-  font-family: "CyberCopix";
-  src: url("/fonts/cyber-copix.woff2") format("woff2");
-  font-display: swap;
-}
-@font-face {
-  font-family: "CyberAlert";
-  src: url("/fonts/cyber-alert.woff2") format("woff2");
-  font-display: swap;
-}
-@font-face {
-  font-family: "LunarEscape";
-  src: url("/fonts/lunar-escape.woff2") format("woff2");
+  font-family: "Bell MT";
+  src: local("Bell MT"), local("BellMT");
   font-display: swap;
 }
 
@@ -27,21 +11,23 @@
 }
 
 :root {
-  /* FONT SYSTEM TOKENS */
-  --font-h1:    "Cyberform", "Geist", system-ui, sans-serif;
-  --font-ui:    "CyberCopix", "Geist", system-ui, sans-serif;
-  --font-alert: "CyberAlert", "Geist", sans-serif;
-  --font-pixel: "LunarEscape", "JetBrains Mono", monospace;
-  --font-body:  "Geist", "Inter", system-ui, sans-serif;
-  --font-mono:  "JetBrains Mono", ui-monospace, monospace;
-
-  /* Backward-compat aliases for existing CSS classes */
-  --font-display: var(--font-h1);
-  --font-tech: var(--font-ui);
-  --font-brand: var(--font-ui);
-  --font-accent: var(--font-ui);
-  --font-serif: var(--font-ui);
-  --font-orbitron: var(--font-ui);
+  /* UNIFIED FONT SYSTEM — Bell MT / Times New Roman ONLY */
+  --font-title:     "Bell MT", "Times New Roman", Times, serif;
+  --font-btn:       "Bell MT", "Times New Roman", Times, serif;
+  --font-node:      "Bell MT", "Times New Roman", Times, serif;
+  --font-node-info: "Bell MT", "Times New Roman", Times, serif;
+  --font-body:      "Bell MT", "Times New Roman", Times, serif;
+  --font-h1:        "Bell MT", "Times New Roman", Times, serif;
+  --font-ui:        "Bell MT", "Times New Roman", Times, serif;
+  --font-alert:     "Bell MT", "Times New Roman", Times, serif;
+  --font-pixel:     "Bell MT", "Times New Roman", Times, serif;
+  --font-mono:      "Bell MT", "Times New Roman", Times, serif;
+  --font-display:   "Bell MT", "Times New Roman", Times, serif;
+  --font-tech:      "Bell MT", "Times New Roman", Times, serif;
+  --font-brand:     "Bell MT", "Times New Roman", Times, serif;
+  --font-accent:    "Bell MT", "Times New Roman", Times, serif;
+  --font-serif:     "Bell MT", "Times New Roman", Times, serif;
+  --font-orbitron:  "Bell MT", "Times New Roman", Times, serif;
 
   /* DARK THEME (Default) */
   --bg: #05070e;
@@ -126,51 +112,61 @@ html, body {
   flex-direction: column;
 }
 
-/* Typography mappings */
-.font-display { font-family: var(--font-h1); }
-.font-tech { font-family: var(--font-ui); }
-.font-orbitron { font-family: var(--font-ui); }
-.font-serif { font-family: var(--font-ui); }
-.mono { font-family: var(--font-mono); }
-.alert-label { font-family: var(--font-alert); text-transform: uppercase; letter-spacing: 0.06em; }
-.hud, .counter { font-family: var(--font-pixel); -webkit-font-smoothing: none; }
-
-h1 {
-  font-family: var(--font-h1);
-  font-weight: 800;
-  letter-spacing: -0.02em;
+/* All Headings: Bell MT / Times New Roman */
+h1, h2, h3, h4, h5, h6, .font-display, .hero-title, .title-heading, .title-text {
+  font-family: "Bell MT", "Times New Roman", Times, serif !important;
   color: var(--text);
 }
 
-h2, h3 {
-  font-family: var(--font-ui);
+h1 {
   font-weight: 700;
-  letter-spacing: 0.04em;
-  color: var(--text);
+  letter-spacing: 0.01em;
+  font-size: clamp(28px, 3vw + 10px, 48px);
 }
 
 h2 {
-  font-size: clamp(24px, 2.2vw + 8px, 40px);
+  font-weight: 700;
+  font-size: clamp(22px, 2.2vw + 8px, 36px);
 }
 
 h3 {
-  font-size: clamp(20px, 1.4vw + 6px, 24px);
+  font-weight: 600;
+  font-size: clamp(18px, 1.4vw + 6px, 24px);
 }
 
 h4, h5, h6 {
-  font-family: var(--font-ui);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: var(--text);
+  font-weight: 600;
 }
 
-p, span, div, li, input, textarea, label {
-  font-family: var(--font-body);
-  color: var(--text-secondary);
+/* Buttons: Bell MT — clean, readable */
+button, .btn, .cyber-btn, .button, input[type="button"], input[type="submit"] {
+  font-family: "Bell MT", "Times New Roman", Times, serif !important;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+/* Graph Nodes: Bell MT */
+.node-click-target, .node-click-target *,
+.floating-inspector-portal, .floating-inspector-portal *,
+.evidence-node, .evidence-node *,
+.graph-node, .graph-node *,
+.node-info, .node-info *,
+.node-details, .node-details *,
+.node-label, text.node-text {
+  font-family: "Bell MT", "Times New Roman", Times, serif !important;
+}
+
+/* All body text: Bell MT / Times New Roman */
+p, span, div, li, input, textarea, select, label, table, th, td, a, pre, code,
+.mono, .font-tech, .font-body, .font-serif, .font-orbitron,
+.alert-label, .hud, .counter {
+  font-family: "Bell MT", "Times New Roman", Times, serif;
 }
 
 /* High-Impact Gradient Typography */
 .gradient-text-cyan {
+  font-family: "Bell MT", "Times New Roman", Times, serif;
   background: linear-gradient(135deg, var(--text) 0%, var(--accent) 60%, var(--blue) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -178,7 +174,8 @@ p, span, div, li, input, textarea, label {
 }
 
 .gradient-text-silver {
-  background: linear-gradient(180deg, var(--text) 0%, var(--muted) 60%, var(--muted) 100%);
+  font-family: "Bell MT", "Times New Roman", Times, serif;
+  background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 50%, #64748b 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

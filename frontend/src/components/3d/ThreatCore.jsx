@@ -142,7 +142,7 @@ function ForensicSatellite({ name, basePos, expandedPos, isDeconstructed, color 
         >
           <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
             <span style={{
-              fontFamily: "var(--font-tech)",
+              fontFamily: "var(--font-node)",
               fontSize: isSelected ? "11px" : "9.5px",
               fontWeight: 700,
               color: isLight ? "#0f172a" : "#fff",
@@ -151,7 +151,7 @@ function ForensicSatellite({ name, basePos, expandedPos, isDeconstructed, color 
               {name}
             </span>
             <span style={{
-              fontFamily: "var(--font-mono)",
+              fontFamily: "var(--font-node)",
               fontSize: "8px",
               color: themeColor,
               fontWeight: 600
@@ -164,7 +164,7 @@ function ForensicSatellite({ name, basePos, expandedPos, isDeconstructed, color 
               marginTop: "3px",
               paddingTop: "3px",
               borderTop: `1px solid ${themeColor}40`,
-              fontFamily: "var(--font-mono)",
+              fontFamily: "var(--font-node)",
               fontSize: "8px",
               color: isLight ? "#475569" : "#cbd5e1"
             }}>
@@ -314,7 +314,7 @@ export default function ThreatCore({ isDeconstructed = false, isThreat = false, 
             color: "var(--text)",
             padding: "6px 12px",
             borderRadius: "4px",
-            fontFamily: "var(--font-tech)",
+            fontFamily: "var(--font-btn)",
             fontSize: "11px",
             fontWeight: 700,
             letterSpacing: "1px",
@@ -334,7 +334,7 @@ export default function ThreatCore({ isDeconstructed = false, isThreat = false, 
             color: activeDeconstruct ? "var(--accent)" : "var(--text)",
             padding: "6px 14px",
             borderRadius: "4px",
-            fontFamily: "var(--font-tech)",
+            fontFamily: "var(--font-btn)",
             fontSize: "11px",
             fontWeight: 700,
             letterSpacing: "1px",

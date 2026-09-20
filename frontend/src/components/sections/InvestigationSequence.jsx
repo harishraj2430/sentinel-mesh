@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Shield, CheckCircle2, AlertTriangle, XCircle, Search, Cpu, Globe, Database, Terminal, FileCode, Lock, Zap } from "lucide-react";
 
@@ -18,39 +18,53 @@ const STAGES = [
 ];
 
 export default function InvestigationSequence({ report, isRunning, onComplete }) {
-  const [currentStage, setCurrentStage] = useState(1);
-  const [stageProgress, setStageProgress] = useState(0);
+  const [currentStage, setCurrentStage] = useState(0);
   const [completedStages, setCompletedStages] = useState(new Set());
+  const animationRef = useRef(null);
 
   useEffect(() => {
-    if (!isRunning && !report) {
-      setCurrentStage(12);
-      setCompletedStages(new Set(STAGES.map(s => s.id)));
-      return;
+    // Clean up any running animation
+    if (animationRef.current) {
+      clearInterval(animationRef.current);
+      animationRef.current = null;
     }
 
     if (isRunning) {
+      // Reset and start fresh animation
       setCurrentStage(1);
       setCompletedStages(new Set());
-      setStageProgress(0);
 
-      const interval = setInterval(() => {
-        setCurrentStage(prev => {
-          if (prev >= 12) {
-            clearInterval(interval);
-            if (onComplete) onComplete();
-            return 12;
-          }
-          setCompletedStages(c => new Set([...c, prev]));
-          return prev + 1;
-        });
+      let stage = 1;
+      animationRef.current = setInterval(() => {
+        stage += 1;
+        if (stage > 12) {
+          clearInterval(animationRef.current);
+          animationRef.current = null;
+          // Mark last stage done
+          setCompletedStages(prev => new Set([...prev, 12]));
+          setCurrentStage(12);
+          if (onComplete) onComplete();
+          return;
+        }
+        // Mark previous stage as completed, advance current
+        setCompletedStages(prev => new Set([...prev, stage - 1]));
+        setCurrentStage(stage);
       }, 450);
-
-      return () => clearInterval(interval);
+    } else if (!isRunning && !report) {
+      // Initial state: no report, not running — show all as waiting
+      setCurrentStage(0);
+      setCompletedStages(new Set());
     }
-  }, [isRunning, report]);
 
-  const activeStageObj = STAGES[currentStage - 1] || STAGES[11];
+    return () => {
+      if (animationRef.current) {
+        clearInterval(animationRef.current);
+        animationRef.current = null;
+      }
+    };
+  }, [isRunning]);
+
+  const activeStageObj = currentStage > 0 ? STAGES[currentStage - 1] : STAGES[0];
   const ActiveIcon = activeStageObj.icon;
 
   // Extract live telemetry details from actual report
@@ -169,7 +183,7 @@ export default function InvestigationSequence({ report, isRunning, onComplete })
                 : "linear-gradient(90deg, #2563eb, #00f3ff)",
               boxShadow: "0 0 10px #00f3ff"
             }}
-            animate={{ width: `${(currentStage / 12) * 100}%` }}
+            animate={{ width: `${(Math.max(currentStage, 0) / 12) * 100}%` }}
             transition={{ duration: 0.3 }}
           />
         </div>
@@ -182,7 +196,7 @@ export default function InvestigationSequence({ report, isRunning, onComplete })
         gap: "12px"
       }}>
         {STAGES.map((s) => {
-          const isDone = completedStages.has(s.id) || (!isRunning && currentStage >= s.id);
+          const isDone = completedStages.has(s.id);
           const isCurrent = currentStage === s.id && isRunning;
           const IconComponent = s.icon;
 

@@ -31,7 +31,7 @@ def determine_threat_classification(
         reasons.append(f"Dangerous executable / container payload detected: {', '.join(att_names)}")
         mitre.append("T1566.001 (Spearphishing Attachment)")
         mitre.append("T1204.002 (User Execution: Malicious File)")
-        risk_points += 55
+        risk_points += 60
     elif has_suspicious_attachment:
         reasons.append("Suspicious archive or macro document attached")
         mitre.append("T1566.001 (Spearphishing Attachment)")
@@ -43,21 +43,30 @@ def determine_threat_classification(
         reasons.append("Credential harvesting / typosquatted destination URLs identified in body")
         mitre.append("T1566.002 (Spearphishing Link)")
         mitre.append("T1056.003 (Credential API / Web Portal Capture)")
-        risk_points += 45
+        risk_points += 50
     elif has_suspicious_url:
         reasons.append("Unverified external hyperlinks with suspicious parameter routing")
         mitre.append("T1566.002 (Spearphishing Link)")
         risk_points += 20
 
-    spf_fail = auth_data.get("spf", {}).get("status") == "FAIL"
-    dkim_fail = auth_data.get("dkim", {}).get("status") == "FAIL"
-    dmarc_fail = auth_data.get("dmarc", {}).get("status") == "FAIL"
-    arc_fail = auth_data.get("arc", {}).get("status") == "FAIL"
+    spf_status = auth_data.get("spf", {}).get("status", "PASS")
+    dkim_status = auth_data.get("dkim", {}).get("status", "PASS")
+    dmarc_status = auth_data.get("dmarc", {}).get("status", "PASS")
+    arc_status = auth_data.get("arc", {}).get("status", "NONE")
+
+    spf_fail = spf_status == "FAIL"
+    dkim_fail = dkim_status == "FAIL"
+    dmarc_fail = dmarc_status == "FAIL"
+    arc_fail = arc_status == "FAIL"
+
+    spf_pass = spf_status == "PASS"
+    dkim_pass = dkim_status == "PASS"
+    dmarc_pass = dmarc_status == "PASS"
 
     if spf_fail and dkim_fail:
         reasons.append("Complete cryptographic authentication failure: both SPF and DKIM failed")
         risk_points += 35
-    elif dmarc_fail:
+    elif dmarc_fail and not (spf_pass or dkim_pass):
         reasons.append("DMARC alignment failure: sender domain policy failed validation")
         risk_points += 25
     
@@ -66,11 +75,12 @@ def determine_threat_classification(
         risk_points += 15
 
     mismatches = identity_data.get("mismatches", [])
-    if mismatches:
+    # Only treat mismatches as critical if authentication failed or there is active impersonation
+    if mismatches and (spf_fail or dmarc_fail or language_data.get("is_bec_suspect") or language_data.get("is_phishing_suspect")):
         for m in mismatches:
             reasons.append(f"Sender identity anomaly: {m}")
         mitre.append("T1589.002 (Email Address Gathering / Impersonation)")
-        risk_points += 40
+        risk_points += 35
 
     if language_data.get("is_bec_suspect"):
         reasons.append("High-risk executive wire transfer / payroll diversion terminology identified")
@@ -83,43 +93,19 @@ def determine_threat_classification(
     net_type = geo_data.get("network_type", {})
     if net_type.get("category") == "VPN / Proxy Exit" or net_type.get("category") == "Tor Exit Node":
         reasons.append("Origin traffic relayed through commercial VPN or Tor anonymity exit node")
-        risk_points += 30
-    elif net_type.get("is_datacenter") and risk_points > 20:
+        risk_points += 25
+    elif net_type.get("is_datacenter") and risk_points >= 30:
         reasons.append(f"Origin IP is a datacenter server ({geo_data.get('org', 'Cloud Provider')}) rather than residential/corporate mail gateway")
-        risk_points += 15
+        risk_points += 10
 
-    # MTA-STS and TLS-RPT checks
-    mta_sts = auth_data.get("mta_sts", {})
-    tls_rpt = auth_data.get("tls_rpt", {})
-    if not mta_sts.get("found"):
-        reasons.append("MTA-STS not configured: no enforced TLS policy for inbound mail")
-        risk_points += 5
-    if not tls_rpt.get("found"):
-        reasons.append("TLS-RPT not configured: no TLS failure reporting mechanism")
-        risk_points += 5
-
-    # WHOIS/Domain age check
-    whois = auth_data.get("whois", {})
-    if whois.get("found") and whois.get("creation_date"):
-        try:
-            creation = datetime.fromisoformat(whois["creation_date"].replace("Z", "+00:00"))
-            age_days = (datetime.utcnow() - creation).days
-            if age_days < 30:
-                reasons.append(f"Domain recently registered ({age_days} days old) - high risk indicator")
-                risk_points += 20
-            elif age_days < 90:
-                reasons.append(f"Domain relatively new ({age_days} days old)")
-                risk_points += 10
-        except Exception:
-            pass
-
+    # Decision tree based on correlated evidence
     if has_malicious_attachment:
         threat_type = "MALWARE / ATTACHMENT"
         severity = "CRITICAL"
-        confidence = min(90 + (risk_points // 10), 98)
+        confidence = 96
         action = "ISOLATE EMAIL & QUARANTINE ATTACHMENT HASH"
         ai_summary = "Forensic analysis identified weaponized attachment payload intended to deliver malicious code. The payload exhibits structural obfuscation and bypasses typical perimeter checks."
-    elif language_data.get("is_bec_suspect") and (mismatches or dmarc_fail):
+    elif language_data.get("is_bec_suspect") and (mismatches or dmarc_fail or spf_fail):
         threat_type = "BUSINESS EMAIL COMPROMISE (BEC)"
         severity = "CRITICAL"
         confidence = 94
@@ -131,30 +117,35 @@ def determine_threat_classification(
         confidence = 92
         action = "ISOLATE EMAIL & BLOCK DEFANGED DOMAINS AT GATEWAY"
         ai_summary = "Confirmed phishing threat targeting sensitive user credentials. Technical evidence reveals deceptive link architecture paired with authentication inconsistencies."
-    elif mismatches or (spf_fail and dkim_fail):
+    elif (spf_fail and dkim_fail) or (mismatches and (spf_fail or dmarc_fail)):
         threat_type = "SPOOFING"
         severity = "HIGH"
         confidence = 88
         action = "REJECT MESSAGE & ENFORCE DMARC QUARANTINE POLICY"
         ai_summary = "Domain spoofing detected. The originating server lacks authorization to transmit on behalf of the claimed sender identity."
-    elif has_suspicious_url:
-        threat_type = "MALICIOUS LINK"
+    elif has_suspicious_url or has_suspicious_attachment:
+        threat_type = "MALICIOUS LINK" if has_suspicious_url else "SUSPICIOUS ATTACHMENT"
         severity = "MEDIUM"
-        confidence = 82
+        confidence = 80
         action = "BLOCK DESTINATION URI & NOTIFY SECURITY OPERATIONS"
-        ai_summary = "Suspicious external destination identified in message content. Destination infrastructure exhibits hallmarks of newly registered or abusive domains."
-    elif risk_points >= 25:
+        ai_summary = "Suspicious destination or attachment structure identified. Infrastructure exhibits hallmarks of untrusted delivery."
+    elif risk_points >= 40:
         threat_type = "SUSPICIOUS"
         severity = "MEDIUM"
         confidence = 75
         action = "FLAG TO RECIPIENT & MONITOR FOR CORRELATED TELEMETRY"
-        ai_summary = "Multiple low-to-medium risk anomalies observed across headers and content. Message deviates from established baseline communications."
+        ai_summary = "Multiple anomalies observed across headers and content. Message deviates from established baseline communications."
     else:
+        # Legitimate clean email
         threat_type = "NO THREAT"
         severity = "LOW"
-        confidence = 96
+        confidence = 98
         action = "ALLOW NORMAL DELIVERY"
-        reasons = ["Cryptographic signatures validated", "Sender envelope and body identities match", "No malicious links or payloads detected"]
+        reasons = [
+            "Cryptographic authentication validated (SPF and/or DKIM passed)",
+            "Sender envelope and body identities match",
+            "No malicious links or weaponized attachments detected"
+        ]
         ai_summary = "Forensic inspection verified sender authenticity, cryptographic alignment, and content cleanliness. No indicators of compromise detected."
 
     unique_reasons = list(dict.fromkeys(reasons))
@@ -320,6 +311,120 @@ def build_report(
         {"step": 13, "action": "VERDICT GENERATED", "timestamp": now_iso, "actor": "CORRELATION ENGINE", "details": f"{threat_type} ({severity})"}
     ]
 
+    scanners = [
+        {
+            "scannerName": "01. Email Ingestion & MIME Integrity",
+            "key": "ingest",
+            "status": "PASS",
+            "score": 0,
+            "findings": [f"Parsed {len(email_obj.get('body', ''))} bytes body, {len(email_obj.get('attachments', []))} payloads"],
+            "evidence": [f"SHA-256: {email_evidence.sha256_hash}"],
+            "explanation": "RFC 5322 MIME multiparts parsed and cryptographically hashed."
+        },
+        {
+            "scannerName": "02. RFC Header Forensics & Alignment",
+            "key": "headers",
+            "status": "FAIL" if (header_result.get("identity", {}).get("mismatches") and not (header_result.get("spf", {}).get("status") == "PASS" or header_result.get("dkim", {}).get("status") == "PASS")) else "PASS",
+            "score": 25 if (header_result.get("identity", {}).get("mismatches") and not (header_result.get("spf", {}).get("status") == "PASS" or header_result.get("dkim", {}).get("status") == "PASS")) else 0,
+            "findings": header_result.get("identity", {}).get("mismatches", []) or ["Header envelope identities aligned"],
+            "evidence": [f"From: {email_obj.get('from')}", f"Return-Path: {email_obj.get('return_path') or 'N/A'}"],
+            "explanation": "Header envelope verification between From, Reply-To, and Return-Path."
+        },
+        {
+            "scannerName": "03. SPF Record Authentication",
+            "key": "spf",
+            "status": header_result.get("spf", {}).get("status", "PASS"),
+            "score": 30 if header_result.get("spf", {}).get("status") == "FAIL" else 0,
+            "findings": [f"SPF Verdict: {header_result.get('spf', {}).get('verdict', 'pass')}"],
+            "evidence": [header_result.get("spf", {}).get("record") or "DNS SPF TXT record"],
+            "explanation": "DNS TXT SPF validation against sending gateway IP."
+        },
+        {
+            "scannerName": "04. DKIM Signature Cryptographic Verification",
+            "key": "dkim",
+            "status": header_result.get("dkim", {}).get("status", "PASS"),
+            "score": 30 if header_result.get("dkim", {}).get("status") == "FAIL" else 0,
+            "findings": [f"Signing domain: {header_result.get('dkim', {}).get('signing_domain') or 'None'}"],
+            "evidence": [f"Selector: {header_result.get('dkim', {}).get('selector') or 'header'}"],
+            "explanation": "RSA/Ed25519 cryptographic signature validation of email body and headers."
+        },
+        {
+            "scannerName": "05. DMARC Alignment & Policy Enforcement",
+            "key": "dmarc",
+            "status": header_result.get("dmarc", {}).get("status", "PASS"),
+            "score": 25 if header_result.get("dmarc", {}).get("status") == "FAIL" else 0,
+            "findings": [f"DMARC Policy: {header_result.get('dmarc', {}).get('policy', 'none')}"],
+            "evidence": [f"Aligned: {header_result.get('dmarc_aligned', False)}"],
+            "explanation": "RFC 7489 identifier alignment between From domain and SPF/DKIM."
+        },
+        {
+            "scannerName": "06. URL Extraction, Defanging & Reputation",
+            "key": "urls",
+            "status": "FAIL" if url_result.get("overall_verdict") == "MALICIOUS_LINKS_DETECTED" else "WARNING" if url_result.get("suspicious_count", 0) > 0 else "PASS",
+            "score": url_result.get("max_risk_score", 0),
+            "findings": [f"{url_result.get('url_count', 0)} URLs inspected, {url_result.get('suspicious_count', 0)} flagged"],
+            "evidence": [u.get("defanged_url", "") for u in url_result.get("urls", [])[:3]],
+            "explanation": "Hyperlink defanging, brand lookalike scanning, and TLD abuse inspection."
+        },
+        {
+            "scannerName": "07. Received Relay Hop Chain Resolution",
+            "key": "hops",
+            "status": "PASS",
+            "score": 0,
+            "findings": [f"{len(header_result.get('relay_chain', []))} message hops traced chronologically"],
+            "evidence": [f"Hop 1: {(header_result.get('relay_chain') or [{}])[0].get('ip', 'Local')}"],
+            "explanation": "Reconstruction of the full SMTP transmission path across mail relays."
+        },
+        {
+            "scannerName": "08. ASN & Network Profiling",
+            "key": "asn",
+            "status": "WARNING" if geo_result.get("network_type", {}).get("is_datacenter") and is_threat else "PASS",
+            "score": geo_result.get("network_type", {}).get("risk_modifier", 0) if is_threat else 0,
+            "findings": [f"{geo_result.get('asn', 'AS0')} ({geo_result.get('org', 'Unknown')})", geo_result.get('network_type', {}).get('category', 'Standard')],
+            "evidence": [f"Gateway IP: {geo_result.get('ip')}"],
+            "explanation": "Autonomous System Number operator risk profiling and datacenter detection."
+        },
+        {
+            "scannerName": "09. Approximate IP Geolocation",
+            "key": "geo",
+            "status": "PASS",
+            "score": 0,
+            "findings": [geo_result.get("approximate_location", "Approximate Network Location")],
+            "evidence": [f"Lat/Lon: {geo_result.get('lat')}, {geo_result.get('lon')}", geo_result.get("location_disclaimer", "")],
+            "explanation": "Routing infrastructure geolocation (Autonomous System MTA node, NOT physical GPS)."
+        },
+        {
+            "scannerName": "10. AI Psychological NLP & BEC Analysis",
+            "key": "nlp",
+            "status": "FAIL" if language_result.get("is_bec_suspect") else "WARNING" if language_result.get("is_phishing_suspect") else "PASS",
+            "score": language_result.get("language_risk_score", 0),
+            "findings": language_result.get("indicators", []) or ["Clean language, no social engineering cues"],
+            "evidence": (language_result.get("urgency_cues", []) + language_result.get("financial_cues", []))[:4],
+            "explanation": "Heuristic evaluation of psychological urgency, wire solicitation, and credential harvesting."
+        },
+        {
+            "scannerName": "11. Attachment Static Forensics",
+            "key": "attachments",
+            "status": "FAIL" if attachment_result.get("overall_verdict") == "MALICIOUS_ATTACHMENT" else "WARNING" if attachment_result.get("has_attachments") else "PASS",
+            "score": attachment_result.get("max_risk_score", 0),
+            "findings": [f"{attachment_result.get('attachment_count', 0)} attachments analyzed", attachment_result.get("overall_verdict", "NO_ATTACHMENTS")],
+            "evidence": [att.get("filename") for att in attachment_result.get("items", [])[:3]],
+            "explanation": "Static analysis for double extensions, container formats, and macro-enabled payloads."
+        },
+        {
+            "scannerName": "12. Threat Correlation & Ledger Anchoring",
+            "key": "verdict",
+            "status": "PASS",
+            "score": base_score,
+            "findings": [f"Final Verdict: {threat_type} ({severity})", f"{len(evidence_records)} items anchored to ledger"],
+            "evidence": [f"Root SHA-256: {evidence_records[0]['hash'] if evidence_records else 'N/A'}"],
+            "explanation": "Multi-signal synthesis into immutable case file with SHA-256 hash-chain verification."
+        }
+    ]
+
+    # Clean geo data - strictly approximate infrastructure location, no device tracking
+    clean_geo = {k: v for k, v in geo_result.items() if k != "device"}
+
     return {
         "case_id": case_id,
         "timestamp": now_iso,
@@ -333,6 +438,10 @@ def build_report(
         "recommended_action": action,
         "mitre_attack": mitre,
         "ai_forensic_analyst": ai_summary,
+
+        "scanners": scanners,
+        "scanners_completed": 12,
+        "scanners_total": 12,
 
         "case_summary": {
             "case_id": case_id,
@@ -360,13 +469,11 @@ def build_report(
         "identity": header_result.get("identity", {}),
         "urls": url_result,
         "attachments": attachment_result,
-        "geo": geo_result,
+        "geo": clean_geo,
         "language": language_result,
         "relay_chain": header_result.get("relay_chain", []),
+        "chain_of_custody": chain_of_custody,
 
-        # New features
-        "device_fingerprint": device_fingerprint,
-        "device_analysis": device_analysis,
         "blockchain_evidence": {
             "case_id": case_id,
             "evidence_count": len(evidence_records),

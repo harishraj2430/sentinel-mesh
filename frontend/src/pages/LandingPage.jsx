@@ -17,6 +17,7 @@ import { analyzeEmail, analyzeSampleCase, getSampleCases } from "../services/api
 export default function LandingPage() {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
   const [error, setError] = useState(null);
   const [sampleCases, setSampleCases] = useState([]);
   const [isGmailModalOpen, setIsGmailModalOpen] = useState(false);
@@ -25,6 +26,7 @@ export default function LandingPage() {
   const uploadRef = useRef(null);
   const sequenceRef = useRef(null);
   const reportRef = useRef(null);
+  const pendingReportRef = useRef(null);
 
   // Smooth Lenis scrolling
   useEffect(() => {
@@ -54,8 +56,11 @@ export default function LandingPage() {
 
   const runInvestigationPipeline = async (fetchReportPromise) => {
     setLoading(true);
+    setIsAnimating(true);
     setError(null);
+    setReport(null);
     setIsDeconstructedCore(true);
+    pendingReportRef.current = null;
 
     // Scroll to sequence
     setTimeout(() => {
@@ -64,16 +69,25 @@ export default function LandingPage() {
 
     try {
       const result = await fetchReportPromise;
-      setReport(result);
-      // After sequence runs, scroll smoothly to the report
-      setTimeout(() => {
-        reportRef.current?.scrollIntoView({ behavior: "smooth" });
-      }, 5500);
+      // Store result but DON'T show it yet — wait for animation to finish
+      pendingReportRef.current = result;
     } catch (err) {
       console.error("ANALYSIS ERROR:", err);
       setError("Investigation engine encountered an error. Switched to fallback simulation.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAnimationComplete = () => {
+    setIsAnimating(false);
+    // Now show the report if we have it
+    if (pendingReportRef.current) {
+      setReport(pendingReportRef.current);
+      pendingReportRef.current = null;
+      setTimeout(() => {
+        reportRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 300);
     }
   };
 
@@ -153,11 +167,9 @@ export default function LandingPage() {
           {/* 5. 12-STAGE ANIMATED INVESTIGATION SEQUENCE */}
           <div ref={sequenceRef} style={{ marginTop: "48px" }}>
             <InvestigationSequence
-              report={report}
-              isRunning={loading}
-              onComplete={() => {
-                reportRef.current?.scrollIntoView({ behavior: "smooth" });
-              }}
+              report={pendingReportRef.current || report}
+              isRunning={isAnimating}
+              onComplete={handleAnimationComplete}
             />
           </div>
 

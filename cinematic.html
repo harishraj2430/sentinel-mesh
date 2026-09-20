@@ -1,0 +1,1605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SENTINEL MESH — Email Threat Investigation Engine (SIH26106)</title>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500;700&family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- CDNs -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <script src="https://unpkg.com/lenis@1.1.9/dist/lenis.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #05070e;
+      --bg-panel: rgba(12, 17, 30, 0.75);
+      --cyan: #00f3ff;
+      --cyan-glow: rgba(0, 243, 255, 0.35);
+      --blue: #2563eb;
+      --red: #ff2e4d;
+      --amber: #f59e0b;
+      --green: #10b981;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --border: rgba(0, 243, 255, 0.2);
+      --font-serif: 'Instrument Serif', Georgia, serif;
+      --font-syne: 'Syne', sans-serif;
+      --font-tech: 'Rajdhani', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font-tech);
+      font-size: 16px;
+      line-height: 1.6;
+      overflow-x: hidden;
+      cursor: crosshair;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #05070e;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(0, 243, 255, 0.3);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--cyan);
+    }
+
+    /* Typography helpers */
+    .font-serif { font-family: var(--font-serif); }
+    .font-syne { font-family: var(--font-syne); }
+    .font-tech { font-family: var(--font-tech); }
+    .mono { font-family: var(--font-mono); }
+
+    /* Scanline & Vignette Overlay */
+    .scanline-overlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 99;
+      background: 
+        radial-gradient(circle at center, transparent 40%, rgba(5, 7, 14, 0.75) 100%),
+        repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.12) 0px, rgba(0, 0, 0, 0.12) 1px, transparent 1px, transparent 3px);
+      opacity: 0.85;
+    }
+
+    /* 3D WebGL Canvas */
+    #webgl-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    /* High Precision Reticle Cursor */
+    .reticle-cursor {
+      position: fixed;
+      pointer-events: none;
+      z-index: 9999;
+      transform: translate(-50%, -50%);
+      transition: width 0.15s, height 0.15s, opacity 0.15s;
+    }
+    .reticle-center {
+      width: 4px;
+      height: 4px;
+      background: var(--cyan);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--cyan);
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+    .reticle-ring {
+      width: 34px;
+      height: 34px;
+      border: 1px solid rgba(0, 243, 255, 0.4);
+      border-radius: 50%;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .reticle-brackets {
+      position: absolute;
+      width: 44px;
+      height: 44px;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+    .reticle-brackets::before, .reticle-brackets::after {
+      content: '';
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      border-color: var(--cyan);
+      border-style: solid;
+    }
+    .reticle-brackets::before {
+      top: 0; left: 0;
+      border-width: 1.5px 0 0 1.5px;
+    }
+    .reticle-brackets::after {
+      bottom: 0; right: 0;
+      border-width: 0 1.5px 1.5px 0;
+    }
+    .reticle-coord {
+      position: absolute;
+      top: 26px;
+      left: 20px;
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      color: var(--cyan);
+      white-space: nowrap;
+      letter-spacing: 1px;
+      opacity: 0.7;
+    }
+
+    /* Top HUD Navbar */
+    .hud-nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 18px 36px;
+      background: linear-gradient(180deg, rgba(5, 7, 14, 0.95) 0%, rgba(5, 7, 14, 0) 100%);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(0, 243, 255, 0.12);
+    }
+    .hud-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .hud-logo-badge {
+      width: 10px;
+      height: 10px;
+      background: var(--cyan);
+      border-radius: 50%;
+      box-shadow: 0 0 12px var(--cyan);
+      animation: pulse-dot 2s infinite ease-in-out;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.4); opacity: 0.6; }
+    }
+    .hud-title {
+      font-family: var(--font-syne);
+      font-size: 1.05rem;
+      font-weight: 800;
+      letter-spacing: 2px;
+      color: #fff;
+    }
+    .hud-links {
+      display: flex;
+      gap: 22px;
+    }
+    .hud-link {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      letter-spacing: 1.5px;
+      transition: color 0.2s, text-shadow 0.2s;
+    }
+    .hud-link:hover {
+      color: var(--cyan);
+      text-shadow: 0 0 10px var(--cyan);
+    }
+    .hud-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .btn-audio {
+      background: rgba(0, 243, 255, 0.08);
+      border: 1px solid rgba(0, 243, 255, 0.3);
+      color: var(--cyan);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn-audio:hover {
+      background: rgba(0, 243, 255, 0.2);
+      box-shadow: 0 0 15px rgba(0, 243, 255, 0.3);
+    }
+    .btn-launch {
+      background: linear-gradient(90deg, #2563eb, var(--cyan));
+      border: none;
+      color: #05070e;
+      font-family: var(--font-syne);
+      font-weight: 700;
+      font-size: 0.8rem;
+      letter-spacing: 1.5px;
+      padding: 8px 18px;
+      border-radius: 4px;
+      cursor: pointer;
+      box-shadow: 0 0 20px var(--cyan-glow);
+      text-decoration: none;
+      display: inline-block;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .btn-launch:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 0 30px var(--cyan);
+    }
+
+    /* Content Layout Container */
+    .content-container {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Section Structure */
+    section {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 120px 0;
+    }
+
+    /* Cyber Panels */
+    .cyber-panel {
+      background: var(--bg-panel);
+      backdrop-filter: blur(14px);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+      position: relative;
+      overflow: hidden;
+    }
+    .cyber-panel::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent 0%, var(--cyan) 50%, transparent 100%);
+      opacity: 0.6;
+    }
+
+    /* Hero Section */
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0, 243, 255, 0.08);
+      border: 1px solid rgba(0, 243, 255, 0.3);
+      padding: 6px 14px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+    .hero-badge-dot {
+      width: 6px;
+      height: 6px;
+      background: var(--cyan);
+      border-radius: 50%;
+    }
+    .hero-headline {
+      font-family: var(--font-syne);
+      font-size: clamp(2.5rem, 6vw, 4.8rem);
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -1px;
+      color: #fff;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .hero-headline-serif {
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-weight: 400;
+      font-size: 1.25em;
+      color: var(--cyan);
+      text-shadow: 0 0 30px rgba(0, 243, 255, 0.4);
+      letter-spacing: 0px;
+      text-transform: none;
+    }
+    .hero-desc {
+      font-size: clamp(1rem, 1.8vw, 1.25rem);
+      color: var(--text-muted);
+      max-width: 680px;
+      line-height: 1.6;
+      margin-bottom: 34px;
+    }
+
+    /* Marquee IOC Ticker */
+    .ioc-ticker {
+      width: 100vw;
+      position: relative;
+      left: 50%;
+      right: 50%;
+      margin-left: -50vw;
+      margin-right: -50vw;
+      background: rgba(12, 17, 30, 0.85);
+      border-top: 1px solid rgba(0, 243, 255, 0.2);
+      border-bottom: 1px solid rgba(0, 243, 255, 0.2);
+      overflow: hidden;
+      white-space: nowrap;
+      padding: 12px 0;
+      margin-top: 40px;
+    }
+    .ioc-track {
+      display: inline-flex;
+      gap: 30px;
+      animation: marquee 35s linear infinite;
+    }
+    @keyframes marquee {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+    .ioc-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: #cbd5e1;
+    }
+    .ioc-tag-crit {
+      color: var(--red);
+      background: rgba(255, 46, 77, 0.15);
+      border: 1px solid rgba(255, 46, 77, 0.4);
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    .ioc-tag-warn {
+      color: var(--amber);
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    .ioc-tag-ok {
+      color: var(--green);
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+
+    /* Scenario Switcher Pills */
+    .scenario-switcher {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .scenario-pill {
+      background: rgba(9, 13, 24, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .scenario-pill:hover, .scenario-pill.active {
+      border-color: var(--cyan);
+      color: #fff;
+      background: rgba(0, 243, 255, 0.12);
+      box-shadow: 0 0 15px rgba(0, 243, 255, 0.2);
+    }
+
+    /* Core Controls Box */
+    .core-controls-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .btn-core-action {
+      background: rgba(5, 7, 14, 0.8);
+      border: 1px solid rgba(0, 243, 255, 0.3);
+      color: var(--cyan);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: all 0.2s;
+    }
+    .btn-core-action:hover {
+      background: var(--cyan);
+      color: #05070e;
+      box-shadow: 0 0 20px var(--cyan);
+    }
+
+    /* Grid layout cards for Protocols */
+    .protocol-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+      margin-top: 36px;
+    }
+    .protocol-card {
+      padding: 24px;
+      transition: transform 0.25s, border-color 0.25s, box-shadow 0.25s;
+    }
+    .protocol-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--cyan);
+      box-shadow: 0 10px 30px rgba(0, 243, 255, 0.15);
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .card-title {
+      font-family: var(--font-syne);
+      font-size: 1.15rem;
+      color: #fff;
+      font-weight: 700;
+    }
+    .card-rfc {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--cyan);
+      background: rgba(0, 243, 255, 0.1);
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+
+    /* Radar Map Section */
+    .radar-wrapper {
+      display: grid;
+      grid-template-columns: 1.6fr 1fr;
+      gap: 28px;
+      margin-top: 36px;
+    }
+    @media (max-width: 900px) {
+      .radar-wrapper { grid-template-columns: 1fr; }
+    }
+    .map-canvas-box {
+      min-height: 380px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      background: radial-gradient(circle at center, rgba(0, 243, 255, 0.04) 0%, rgba(5, 7, 14, 0.9) 100%);
+    }
+
+    /* Blockchain Live Tamper Studio */
+    .vault-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 24px;
+      margin-top: 32px;
+    }
+    @media (max-width: 900px) {
+      .vault-grid { grid-template-columns: 1fr; }
+    }
+    .tamper-terminal {
+      background: rgba(5, 7, 14, 0.85);
+      border: 1px solid rgba(0, 243, 255, 0.25);
+      border-radius: 8px;
+      padding: 20px;
+      font-family: var(--font-mono);
+    }
+    .tamper-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+    .tamper-badge.valid {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid var(--green);
+      color: var(--green);
+    }
+    .tamper-badge.corrupted {
+      background: rgba(255, 46, 77, 0.15);
+      border: 1px solid var(--red);
+      color: var(--red);
+      animation: flash-red 0.5s infinite alternate;
+    }
+    @keyframes flash-red {
+      0% { opacity: 0.6; }
+      100% { opacity: 1; text-shadow: 0 0 10px var(--red); }
+    }
+
+    /* Evidence Graph */
+    .evidence-canvas-panel {
+      min-height: 440px;
+      padding: 24px;
+      margin-top: 36px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .graph-nodes-container {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 20px;
+      padding: 30px 0;
+    }
+    .graph-node {
+      background: rgba(12, 17, 30, 0.8);
+      border: 1px solid rgba(0, 243, 255, 0.3);
+      padding: 16px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      min-width: 140px;
+      text-align: center;
+    }
+    .graph-node:hover {
+      transform: scale(1.15);
+      border-color: var(--cyan);
+      box-shadow: 0 0 25px rgba(0, 243, 255, 0.4);
+      background: rgba(0, 243, 255, 0.15);
+    }
+
+    /* Section Titles */
+    .section-num {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: var(--cyan);
+      letter-spacing: 2px;
+      margin-bottom: 6px;
+    }
+    .section-title {
+      font-family: var(--font-syne);
+      font-size: clamp(2rem, 3.5vw, 2.8rem);
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+    }
+    .section-desc {
+      font-size: 1rem;
+      color: var(--text-muted);
+      max-width: 650px;
+      line-height: 1.6;
+    }
+
+    /* Campaign Frequency Bar */
+    .freq-bar-group {
+      margin-bottom: 18px;
+    }
+    .freq-bar-label {
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: #cbd5e1;
+      margin-bottom: 6px;
+    }
+    .freq-bar-track {
+      height: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .freq-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 1s ease-in-out;
+    }
+
+    /* Footer */
+    footer {
+      position: relative;
+      z-index: 10;
+      border-top: 1px solid rgba(0, 243, 255, 0.15);
+      background: rgba(5, 7, 14, 0.95);
+      padding: 60px 0 40px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Ambient CRT Scanline Overlay -->
+  <div class="scanline-overlay"></div>
+
+  <!-- Custom Precision Reticle Cursor -->
+  <div class="reticle-cursor" id="custom-cursor">
+    <div class="reticle-center"></div>
+    <div class="reticle-ring" id="cursor-ring"></div>
+    <div class="reticle-brackets"></div>
+    <div class="reticle-coord" id="cursor-coords">X: 000 | Y: 000</div>
+  </div>
+
+  <!-- Fullscreen 3D WebGL Background -->
+  <canvas id="webgl-canvas"></canvas>
+
+  <!-- Top HUD Navbar -->
+  <header class="hud-nav">
+    <div class="hud-brand">
+      <div class="hud-logo-badge"></div>
+      <div>
+        <span class="hud-title">SENTINEL MESH</span>
+        <span class="mono" style="font-size: 0.65rem; color: var(--cyan); margin-left: 8px; border: 1px solid rgba(0,243,255,0.3); padding: 1px 5px; border-radius: 2px;">v3.4 CINEMATIC</span>
+      </div>
+    </div>
+
+    <nav class="hud-links">
+      <a href="#hero" class="hud-link">01 CORE</a>
+      <a href="#protocols" class="hud-link">02 PROTOCOLS</a>
+      <a href="#georadar" class="hud-link">03 RADAR</a>
+      <a href="#evidence" class="hud-link">04 GRAPH</a>
+      <a href="#vault" class="hud-link">05 VAULT</a>
+      <a href="#campaign" class="hud-link">06 CAMPAIGN</a>
+    </nav>
+
+    <div class="hud-actions">
+      <button class="btn-audio" id="audio-toggle-btn" title="Toggle Procedural Web Audio Synth">
+        <span id="audio-icon">🔊</span>
+        <span id="audio-status">AUDIO ON</span>
+      </button>
+      <a href="http://localhost:5173" target="_blank" class="btn-launch">
+        OPEN SIH DASHBOARD →
+      </a>
+    </div>
+  </header>
+
+  <!-- Content Stream -->
+  <main class="content-container">
+
+    <!-- ================= CHAPTER 1: HERO ================= -->
+    <section id="hero">
+      <div class="hero-badge">
+        <div class="hero-badge-dot"></div>
+        <span class="mono" style="font-size: 0.75rem; color: var(--cyan); letter-spacing: 1.5px;">
+          SIH26106 // AI-POWERED EMAIL FORENSIC & BLOCKCHAIN INTEGRITY
+        </span>
+      </div>
+
+      <h1 class="hero-headline">
+        EMAIL IS THE <br />
+        <span class="hero-headline-serif">Evidence.</span>
+      </h1>
+
+      <p class="hero-desc">
+        Autonomous AI-driven threat investigation engine. Cryptographically deconstructing RFC 822 MIME headers, tracing BGP Autonomous System transit vectors, and anchoring chain-of-custody onto immutable distributed ledgers.
+      </p>
+
+      <!-- Scenario Selector -->
+      <div class="scenario-switcher">
+        <button class="scenario-pill active" onclick="selectScenario('bec')">[01] BEC IMPERSONATION (CRITICAL)</button>
+        <button class="scenario-pill" onclick="selectScenario('phish')">[02] M365 CREDENTIAL HARVEST (HIGH)</button>
+        <button class="scenario-pill" onclick="selectScenario('malware')">[03] WEAPONIZED ATTACHMENT (CRITICAL)</button>
+        <button class="scenario-pill" onclick="selectScenario('clean')">[04] VERIFIED CLOUD TRAFFIC (CLEAN)</button>
+      </div>
+
+      <!-- Core Interactivity Controls -->
+      <div class="core-controls-bar">
+        <button class="btn-core-action" onclick="toggleDeconstruct()" id="deconstruct-btn">
+          [ DECONSTRUCT 3D CORE ]
+        </button>
+        <button class="btn-core-action" onclick="spinCore()">
+          [ 360° LASER SCAN ]
+        </button>
+        <span class="mono" style="font-size: 0.75rem; color: var(--text-muted); margin-left: 12px;">
+          SCROLL DOWN TO TRAVERSE FORENSIC PIPELINE ↓
+        </span>
+      </div>
+
+      <!-- Ticker Marquee -->
+      <div class="ioc-ticker">
+        <div class="ioc-track">
+          <span class="ioc-item"><strong class="ioc-tag-crit">CRITICAL</strong> SATYA NADELLA SPOOF &lt;ceo-desk@office-microsoft-notice.com&gt;</span>
+          <span class="ioc-item">•</span>
+          <span class="ioc-item"><strong class="ioc-tag-warn">FAIL</strong> SPF POLICY: -all [IP: 185.220.101.45 NOT AUTHORIZED]</span>
+          <span class="ioc-item">•</span>
+          <span class="ioc-item"><strong class="ioc-tag-crit">TAMPER</strong> ARC CHAIN: BROKEN SEAL AT HOP #2 (RFC 8617)</span>
+          <span class="ioc-item">•</span>
+          <span class="ioc-item"><strong class="ioc-tag-warn">GEO</strong> BULLETPROOF ASN44050 (AMSTERDAM, NL)</span>
+          <span class="ioc-item">•</span>
+          <span class="ioc-item"><strong class="ioc-tag-ok">SECURE</strong> BLOCK #714920 ANCHORED (SHA-256: 9f86d08188...)</span>
+          <span class="ioc-item">•</span>
+          <span class="ioc-item"><strong class="ioc-tag-crit">WIRE</strong> REASON: $248,500 CONFIDENTIAL ACQUISITION DIVERSION</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= CHAPTER 2: PROTOCOLS ================= -->
+    <section id="protocols">
+      <div class="section-num">// CHAPTER 02</div>
+      <h2 class="section-title">CRYPTOGRAPHIC PROTOCOL SUITE</h2>
+      <p class="section-desc">
+        Comprehensive OSI application layer authentication auditing. Sentinel Mesh evaluates identity alignment across all RFC standards to detect unauthorized transit relays and forged signatures.
+      </p>
+
+      <div class="protocol-grid">
+        <!-- SPF -->
+        <div class="cyber-panel protocol-card" onmouseenter="playHoverTone()">
+          <div class="card-header">
+            <h3 class="card-title">SPF VALIDATION</h3>
+            <span class="card-rfc">RFC 7208</span>
+          </div>
+          <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 16px;">
+            Validates whether the transmitting SMTP gateway IP address matches the domain owner's authorized DNS TXT records.
+          </p>
+          <div class="mono" style="font-size: 0.75rem; background: rgba(5,7,14,0.6); padding: 10px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.05);">
+            <span style="color: var(--red); font-weight: 700;">STATUS: FAIL (-all)</span><br />
+            <span style="color: #64748b;">185.220.101.45 not in authorized subnet</span>
+          </div>
+        </div>
+
+        <!-- DKIM -->
+        <div class="cyber-panel protocol-card" onmouseenter="playHoverTone()">
+          <div class="card-header">
+            <h3 class="card-title">DKIM SIGNATURE</h3>
+            <span class="card-rfc">RFC 6376</span>
+          </div>
+          <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 16px;">
+            Asymmetric 2048-bit RSA cryptographic digital signature confirming message body and headers were not altered in transit.
+          </p>
+          <div class="mono" style="font-size: 0.75rem; background: rgba(5,7,14,0.6); padding: 10px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.05);">
+            <span style="color: var(--red); font-weight: 700;">STATUS: MISSING SIGNATURE</span><br />
+            <span style="color: #64748b;">No public key selector in DNS zone</span>
+          </div>
+        </div>
+
+        <!-- DMARC -->
+        <div class="cyber-panel protocol-card" onmouseenter="playHoverTone()">
+          <div class="card-header">
+            <h3 class="card-title">DMARC ALIGNMENT</h3>
+            <span class="card-rfc">RFC 7489</span>
+          </div>
+          <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 16px;">
+            Enforces sender domain alignment between RFC 5322 From header and SPF/DKIM envelope authentication identifiers.
+          </p>
+          <div class="mono" style="font-size: 0.75rem; background: rgba(5,7,14,0.6); padding: 10px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.05);">
+            <span style="color: var(--red); font-weight: 700;">STATUS: UNALIGNED (p=none)</span><br />
+            <span style="color: #64748b;">Display domain diverges from envelope sender</span>
+          </div>
+        </div>
+
+        <!-- ARC -->
+        <div class="cyber-panel protocol-card" onmouseenter="playHoverTone()">
+          <div class="card-header">
+            <h3 class="card-title">ARC CHAIN</h3>
+            <span class="card-rfc">RFC 8617</span>
+          </div>
+          <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 16px;">
+            Authenticated Received Chain preserving authentication assessments across multi-hop mailing lists and intermediate relays.
+          </p>
+          <div class="mono" style="font-size: 0.75rem; background: rgba(5,7,14,0.6); padding: 10px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.05);">
+            <span style="color: var(--red); font-weight: 700;">STATUS: BROKEN SEAL (Hop #2)</span><br />
+            <span style="color: #64748b;">Cryptographic signature sequence tampered</span>
+          </div>
+        </div>
+
+        <!-- MTA-STS -->
+        <div class="cyber-panel protocol-card" onmouseenter="playHoverTone()">
+          <div class="card-header">
+            <h3 class="card-title">MTA-STS ENFORCEMENT</h3>
+            <span class="card-rfc">RFC 8461</span>
+          </div>
+          <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 16px;">
+            Strict Mail Transfer Agent Transport Security policy preventing TLS downgrade attacks and man-in-the-middle eavesdropping.
+          </p>
+          <div class="mono" style="font-size: 0.75rem; background: rgba(5,7,14,0.6); padding: 10px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.05);">
+            <span style="color: var(--red); font-weight: 700;">STATUS: MODE NONE</span><br />
+            <span style="color: #64748b;">Sending domain allows plaintext fallback</span>
+          </div>
+        </div>
+
+        <!-- TLS-RPT -->
+        <div class="cyber-panel protocol-card" onmouseenter="playHoverTone()">
+          <div class="card-header">
+            <h3 class="card-title">TLS-RPT TELEMETRY</h3>
+            <span class="card-rfc">RFC 8460</span>
+          </div>
+          <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 16px;">
+            SMTP TLS Reporting reporting transport encryption failures, certificate expiration, and negotiation anomalies.
+          </p>
+          <div class="mono" style="font-size: 0.75rem; background: rgba(5,7,14,0.6); padding: 10px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.05);">
+            <span style="color: var(--amber); font-weight: 700;">STATUS: UNCONFIGURED</span><br />
+            <span style="color: #64748b;">No RUA endpoint declared for sender zone</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= CHAPTER 3: GEORADAR ================= -->
+    <section id="georadar">
+      <div class="section-num">// CHAPTER 03</div>
+      <h2 class="section-title">TACTICAL GEOLOCATION & ASN RADAR</h2>
+      <p class="section-desc">
+        Network hop reconstruction tracing the exact autonomous system infrastructure through which the email transit occurred.
+      </p>
+
+      <div class="radar-wrapper">
+        <!-- Left: SVG Interactive World Map -->
+        <div class="cyber-panel map-canvas-box">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span class="font-syne" style="font-size: 0.95rem; color: #fff;">INFRASTRUCTURE ROUTE VECTOR</span>
+            <span class="mono" style="font-size: 0.7rem; color: var(--cyan);">GRID: WGS-84</span>
+          </div>
+
+          <!-- Realistic Continents SVG Map -->
+          <svg viewBox="0 0 800 420" style="width: 100%; height: auto; max-height: 280px; margin: 20px 0;">
+            <!-- Grid Lines -->
+            <defs>
+              <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(0, 243, 255, 0.08)" stroke-width="0.5" />
+              </pattern>
+            </defs>
+            <rect width="800" height="420" fill="url(#grid)" />
+
+            <!-- Continents Paths -->
+            <g fill="rgba(0, 243, 255, 0.08)" stroke="rgba(0, 243, 255, 0.25)" stroke-width="1">
+              <!-- North America -->
+              <path d="M 100 80 L 160 70 L 220 90 L 230 140 L 200 180 L 160 210 L 140 170 L 110 130 Z" />
+              <!-- South America -->
+              <path d="M 175 210 L 210 220 L 245 250 L 235 295 L 215 350 L 195 380 L 175 280 Z" />
+              <!-- Europe -->
+              <path d="M 350 85 L 390 75 L 420 85 L 430 115 L 400 135 L 365 140 L 345 115 Z" />
+              <!-- Africa -->
+              <path d="M 345 150 L 405 145 L 445 185 L 455 240 L 420 300 L 385 340 L 340 240 Z" />
+              <!-- Asia -->
+              <path d="M 425 80 L 485 70 L 560 65 L 630 85 L 670 125 L 635 160 L 580 180 L 500 190 L 450 160 Z" />
+              <!-- Australia -->
+              <path d="M 570 295 L 640 290 L 665 330 L 645 370 L 585 365 Z" />
+            </g>
+
+            <!-- Transit Route Path Curve -->
+            <path d="M 380 110 Q 300 90 200 140" fill="none" stroke="var(--cyan)" stroke-width="2" stroke-dasharray="6 4" />
+
+            <!-- Origin Pin (Amsterdam Bulletproof Host) -->
+            <circle cx="380" cy="110" r="6" fill="var(--red)" />
+            <circle cx="380" cy="110" r="14" fill="none" stroke="var(--red)" stroke-width="1.5" opacity="0.6">
+              <animate attributeName="r" values="6;22;6" dur="2s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0.8;0;0.8" dur="2s" repeatCount="indefinite" />
+            </circle>
+            <text x="395" y="114" fill="#fff" font-family="'JetBrains Mono'" font-size="11" font-weight="bold">
+              ORIGIN: AMSTERDAM (NL) [AS44050]
+            </text>
+
+            <!-- Recipient MX Pin -->
+            <circle cx="200" cy="140" r="5" fill="var(--cyan)" />
+            <text x="130" y="160" fill="var(--cyan)" font-family="'JetBrains Mono'" font-size="10">
+              MX: CORP INTERNAL
+            </text>
+          </svg>
+
+          <!-- External Google Maps Recon Button -->
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 14px;">
+            <span class="mono" style="font-size: 0.75rem; color: var(--amber);">
+              ⚠️ DISCLAIMER: Autonomous System MTA location (NOT physical GPS)
+            </span>
+            <a href="https://www.google.com/maps/search/?api=1&query=52.3676,4.9041" target="_blank" class="btn-core-action" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+              <span>LAUNCH GOOGLE MAPS SATELLITE</span> ↗
+            </a>
+          </div>
+        </div>
+
+        <!-- Right: Device & Access Intelligence Panel -->
+        <div class="cyber-panel" style="padding: 24px; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <h4 class="font-syne" style="font-size: 1.1rem; color: #fff; margin-bottom: 16px;">
+              DEVICE & ACCESS INTELLIGENCE
+            </h4>
+            <p class="mono" style="font-size: 0.75rem; color: var(--cyan); margin-bottom: 16px;">
+              RFC 822 / MIME USER-AGENT TELEMETRY
+            </p>
+
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              <div style="background: rgba(5,7,14,0.6); padding: 10px 14px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+                <span class="mono" style="font-size: 0.7rem; color: var(--text-muted);">DEVICE CATEGORY</span>
+                <p class="font-tech" style="font-size: 0.95rem; color: #fff; font-weight: 600;">Desktop / Workstation</p>
+              </div>
+              <div style="background: rgba(5,7,14,0.6); padding: 10px 14px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+                <span class="mono" style="font-size: 0.7rem; color: var(--text-muted);">USER-AGENT / CLIENT</span>
+                <p class="mono" style="font-size: 0.85rem; color: var(--cyan);">Thunderbird / Python-smtplib</p>
+              </div>
+              <div style="background: rgba(5,7,14,0.6); padding: 10px 14px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+                <span class="mono" style="font-size: 0.7rem; color: var(--text-muted);">OPERATING SYSTEM</span>
+                <p class="mono" style="font-size: 0.85rem; color: #cbd5e1;">Linux x86_64 (Custom Kernel)</p>
+              </div>
+              <div style="background: rgba(5,7,14,0.6); padding: 10px 14px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+                <span class="mono" style="font-size: 0.7rem; color: var(--text-muted);">HARDWARE MODEL SPECIFICATION</span>
+                <p class="mono" style="font-size: 0.78rem; color: var(--amber);">
+                  Model info: Unavailable from RFC 822 supplied metadata
+                </p>
+              </div>
+              <div style="background: rgba(5,7,14,0.6); padding: 10px 14px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+                <span class="mono" style="font-size: 0.7rem; color: var(--text-muted);">ACTIVE SENDER SESSIONS</span>
+                <p class="mono" style="font-size: 0.85rem; color: var(--red); font-weight: 700;">
+                  4 Concurrent Sessions Detected
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= CHAPTER 4: EVIDENCE GRAPH ================= -->
+    <section id="evidence">
+      <div class="section-num">// CHAPTER 04</div>
+      <h2 class="section-title">THREAT CORRELATION EVIDENCE GRAPH</h2>
+      <p class="section-desc">
+        Interactive bi-directional relationship mapping. Hover or click any block to zoom in and extract deep forensic telemetry.
+      </p>
+
+      <div class="cyber-panel evidence-canvas-panel">
+        <div>
+          <span class="font-syne" style="font-size: 0.95rem; color: #fff;">CORRELATED ATTACK NODES</span>
+          <p class="mono" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+            HOVER NODES TO ZOOM IN & REVEAL CORRELATION EVIDENCE
+          </p>
+        </div>
+
+        <div class="graph-nodes-container">
+          <div class="graph-node" onmouseenter="inspectNode('identity')">
+            <span class="mono" style="font-size: 0.7rem; color: var(--red);">[NODE 01]</span>
+            <p class="font-syne" style="font-size: 0.95rem; color: #fff; margin-top: 4px;">IDENTITY</p>
+            <span class="mono" style="font-size: 0.72rem; color: #64748b;">SPOOFED SENDER</span>
+          </div>
+          <div class="graph-node" onmouseenter="inspectNode('auth')">
+            <span class="mono" style="font-size: 0.7rem; color: var(--red);">[NODE 02]</span>
+            <p class="font-syne" style="font-size: 0.95rem; color: #fff; margin-top: 4px;">GATES</p>
+            <span class="mono" style="font-size: 0.72rem; color: #64748b;">SPF / DMARC FAIL</span>
+          </div>
+          <div class="graph-node" onmouseenter="inspectNode('asn')">
+            <span class="mono" style="font-size: 0.7rem; color: var(--amber);">[NODE 03]</span>
+            <p class="font-syne" style="font-size: 0.95rem; color: #fff; margin-top: 4px;">TRANSIT</p>
+            <span class="mono" style="font-size: 0.72rem; color: #64748b;">AS44050 BULLETPROOF</span>
+          </div>
+          <div class="graph-node" onmouseenter="inspectNode('url')">
+            <span class="mono" style="font-size: 0.7rem; color: var(--red);">[NODE 04]</span>
+            <p class="font-syne" style="font-size: 0.95rem; color: #fff; margin-top: 4px;">DIVERSION</p>
+            <span class="mono" style="font-size: 0.72rem; color: #64748b;">REPLY-TO HIJACK</span>
+          </div>
+          <div class="graph-node" onmouseenter="inspectNode('payload')">
+            <span class="mono" style="font-size: 0.7rem; color: var(--green);">[NODE 05]</span>
+            <p class="font-syne" style="font-size: 0.95rem; color: #fff; margin-top: 4px;">PAYLOAD</p>
+            <span class="mono" style="font-size: 0.72rem; color: #64748b;">SHA-256 DIGEST</span>
+          </div>
+          <div class="graph-node" onmouseenter="inspectNode('merkle')">
+            <span class="mono" style="font-size: 0.7rem; color: var(--cyan);">[NODE 06]</span>
+            <p class="font-syne" style="font-size: 0.95rem; color: #fff; margin-top: 4px;">LEDGER</p>
+            <span class="mono" style="font-size: 0.72rem; color: #64748b;">BLOCK #714920</span>
+          </div>
+        </div>
+
+        <!-- Telemetry Details Card for Hovered Node -->
+        <div id="node-telemetry-box" style="background: rgba(5,7,14,0.85); border: 1px solid var(--cyan); padding: 14px 20px; border-radius: 6px;">
+          <span class="mono" style="font-size: 0.7rem; color: var(--cyan);">TELEMETRY FOCUS:</span>
+          <p class="mono" id="node-telemetry-text" style="font-size: 0.85rem; color: #fff; margin-top: 4px;">
+            [HOVER OVER A GRAPH NODE ABOVE TO ENGAGE REAL-TIME TELEMETRY SENSORS]
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= CHAPTER 5: BLOCKCHAIN VAULT ================= -->
+    <section id="vault">
+      <div class="section-num">// CHAPTER 05</div>
+      <h2 class="section-title">IMMUTABLE BLOCKCHAIN EVIDENCE VAULT</h2>
+      <p class="section-desc">
+        Zero-trust forensic integrity verification. Every extracted RFC 822 MIME artifact is cryptographically hashed with SHA-256 and anchored into an immutable Merkle tree.
+      </p>
+
+      <div class="vault-grid">
+        <!-- Left: Real-time Tamper Simulation Studio -->
+        <div class="cyber-panel" style="padding: 24px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h4 class="font-syne" style="font-size: 1.1rem; color: #fff;">LIVE TAMPER VERIFICATION ENGINE</h4>
+            <span id="tamper-badge" class="tamper-badge valid">✓ INTEGRITY VERIFIED</span>
+          </div>
+
+          <p class="mono" style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px;">
+            CANONICAL RFC 822 MIME EVIDENCE BUFFER:
+          </p>
+
+          <div id="evidence-buffer-box" class="tamper-terminal" style="height: 140px; overflow-y: auto; font-size: 0.72rem; color: #94a3b8; line-height: 1.5; margin-bottom: 18px;">
+            {
+  "case_id": "SM-2026-00142",
+  "from": "Satya Nadella <ceo-desk@office-microsoft-notice.com>",
+  "reply_to": "wire-processing@drop-vault-finance.top",
+  "subject": "STRICTLY CONFIDENTIAL: Wire Transfer for Q3 Project Delta",
+  "wire_amount": "$248,500.00",
+  "mta_gateway": "185.220.101.45",
+  "dmarc_verdict": "FAIL"
+}
+          </div>
+
+          <div style="background: rgba(5,7,14,0.6); padding: 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 20px;">
+            <span class="mono" style="font-size: 0.7rem; color: var(--text-muted);">LIVE COMPUTED SHA-256 DIGEST:</span>
+            <p class="mono" id="computed-sha256" style="font-size: 0.75rem; color: var(--cyan); word-break: break-all; margin-top: 4px;">
+              9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
+            </p>
+          </div>
+
+          <!-- Tamper Controls -->
+          <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+            <button class="btn-core-action" onclick="verifyIntegrity()" style="background: rgba(16, 185, 129, 0.15); border-color: var(--green); color: var(--green);">
+              ✓ VERIFY INTEGRITY (SHA-256)
+            </button>
+            <button class="btn-core-action" onclick="simulateTamper()" style="background: rgba(255, 46, 77, 0.15); border-color: var(--red); color: var(--red);">
+              ⚡ SIMULATE BYTE TAMPERING (+1 BIT)
+            </button>
+            <button class="btn-core-action" onclick="restoreIntegrity()">
+              ↻ RESTORE BASELINE
+            </button>
+          </div>
+        </div>
+
+        <!-- Right: Chain of Custody Card -->
+        <div class="cyber-panel" style="padding: 24px; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <h4 class="font-syne" style="font-size: 1.1rem; color: #fff; margin-bottom: 16px;">
+              FORENSIC CHAIN OF CUSTODY
+            </h4>
+            
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <span class="mono" style="color: var(--green);">[✓]</span>
+                <div>
+                  <p class="font-tech" style="font-size: 0.9rem; color: #fff; font-weight: 600;">1. Ingestion & MIME Boundary Extraction</p>
+                  <p class="mono" style="font-size: 0.72rem; color: var(--text-muted);">Captured from port 25 relay gateway</p>
+                </div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <span class="mono" style="color: var(--green);">[✓]</span>
+                <div>
+                  <p class="font-tech" style="font-size: 0.9rem; color: #fff; font-weight: 600;">2. Cryptographic Digest Calculation</p>
+                  <p class="mono" style="font-size: 0.72rem; color: var(--text-muted);">Canonical raw RFC 822 SHA-256 generated</p>
+                </div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <span class="mono" style="color: var(--green);">[✓]</span>
+                <div>
+                  <p class="font-tech" style="font-size: 0.9rem; color: #fff; font-weight: 600;">3. Merkle Tree Consensus Anchoring</p>
+                  <p class="mono" style="font-size: 0.72rem; color: var(--text-muted);">Anchored in Block #714920 with witness proof</p>
+                </div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <span class="mono" style="color: var(--green);">[✓]</span>
+                <div>
+                  <p class="font-tech" style="font-size: 0.9rem; color: #fff; font-weight: 600;">4. SOC Analyst Evidence Certification</p>
+                  <p class="mono" style="font-size: 0.72rem; color: var(--text-muted);">Legal admissibility audit stamp applied</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 14px; margin-top: 20px;">
+            <span class="mono" style="font-size: 0.72rem; color: var(--cyan);">
+              COURT-READY ADMISSIBILITY: RFC 3161 TIMESTAMPED
+            </span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= CHAPTER 6: CAMPAIGN RECURRENCE ================= -->
+    <section id="campaign">
+      <div class="section-num">// CHAPTER 06</div>
+      <h2 class="section-title">CAMPAIGN RECURRENCE & ATTACK INTEL</h2>
+      <p class="section-desc">
+        Temporal attack frequency analysis and forensic root cause diagnostics explaining why specific threat vectors are executed repeatedly.
+      </p>
+
+      <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; margin-top: 36px;">
+        <!-- Frequency Breakdown -->
+        <div class="cyber-panel" style="padding: 24px;">
+          <h4 class="font-syne" style="font-size: 1.1rem; color: #fff; margin-bottom: 20px;">
+            ATTACK VECTOR FREQUENCY MATRIX
+          </h4>
+
+          <div class="freq-bar-group">
+            <div class="freq-bar-label">
+              <span>1. Credential Harvesting (Fake M365 Portals)</span>
+              <span style="color: var(--cyan); font-weight: 700;">48% [42 INCIDENTS]</span>
+            </div>
+            <div class="freq-bar-track">
+              <div class="freq-bar-fill" style="width: 48%; background: linear-gradient(90deg, #2563eb, var(--cyan));"></div>
+            </div>
+          </div>
+
+          <div class="freq-bar-group">
+            <div class="freq-bar-label">
+              <span>2. Executive Impersonation / BEC Wire Transfers</span>
+              <span style="color: var(--red); font-weight: 700;">34% [29 INCIDENTS]</span>
+            </div>
+            <div class="freq-bar-track">
+              <div class="freq-bar-fill" style="width: 34%; background: linear-gradient(90deg, #ea580c, var(--red));"></div>
+            </div>
+          </div>
+
+          <div class="freq-bar-group">
+            <div class="freq-bar-label">
+              <span>3. Weaponized Logistics & Invoice Droppers</span>
+              <span style="color: var(--amber); font-weight: 700;">18% [16 INCIDENTS]</span>
+            </div>
+            <div class="freq-bar-track">
+              <div class="freq-bar-fill" style="width: 18%; background: linear-gradient(90deg, #d97706, var(--amber));"></div>
+            </div>
+          </div>
+
+          <div style="background: rgba(5,7,14,0.6); padding: 14px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); margin-top: 24px;">
+            <span class="mono" style="font-size: 0.72rem; color: var(--cyan);">TEMPORAL CONVERGENCE:</span>
+            <p class="font-tech" style="font-size: 0.85rem; color: #cbd5e1; margin-top: 4px;">
+              Surges concentrate on <strong>Monday 08:00 - 10:00 AM</strong> (login credential rush) and <strong>Quarter-End Fridays</strong> (wire clearance pressures).
+            </p>
+          </div>
+        </div>
+
+        <!-- Root Cause Analysis -->
+        <div class="cyber-panel" style="padding: 24px;">
+          <h4 class="font-syne" style="font-size: 1.1rem; color: #fff; margin-bottom: 20px;">
+            FORENSIC ROOT CAUSE ANALYSIS
+          </h4>
+          
+          <div style="display: flex; flex-direction: column; gap: 14px; font-size: 0.85rem;">
+            <div style="background: rgba(5,7,14,0.6); padding: 12px; border-radius: 6px;">
+              <span class="mono" style="color: var(--amber); font-weight: 700;">• BULLETPROOF ASN REUSE</span>
+              <p style="color: #cbd5e1; margin-top: 4px;">
+                82% of observed BEC incidents originate from bulletproof hosting subnets (AS44050, AS20473) rotating upstream IP ranges.
+              </p>
+            </div>
+            <div style="background: rgba(5,7,14,0.6); padding: 12px; border-radius: 6px;">
+              <span class="mono" style="color: var(--amber); font-weight: 700;">• DOMAIN TYPOSQUATTING DRIFT</span>
+              <p style="color: #cbd5e1; margin-top: 4px;">
+                Attackers automatically register substitute high-abuse TLDs (.xyz, .top, .live) immediately after previous domains are blocked.
+              </p>
+            </div>
+            <div style="background: rgba(5,7,14,0.6); padding: 12px; border-radius: 6px;">
+              <span class="mono" style="color: var(--amber); font-weight: 700;">• COGNITIVE URGENCY EXPLOITATION</span>
+              <p style="color: #cbd5e1; margin-top: 4px;">
+                Lures leverage high-stress time windows where recipients are prone to bypass standard out-of-band verification steps.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ================= FOOTER ================= -->
+  <footer>
+    <div class="content-container">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 28px; margin-bottom: 24px;">
+        <div style="text-align: left;">
+          <h3 class="font-syne" style="font-size: 1.2rem; color: #fff;">SENTINEL MESH</h3>
+          <p class="mono" style="font-size: 0.75rem; color: var(--text-muted);">
+            SIH26106 AI-Powered Email Threat Detection, Geolocation & Forensic Intelligence
+          </p>
+        </div>
+        <div>
+          <a href="http://localhost:5173" target="_blank" class="btn-launch">
+            ENTER REACT APPLICATION →
+          </a>
+        </div>
+      </div>
+      <p class="mono" style="font-size: 0.72rem; color: #64748b;">
+        ENGINEERED FOR SMART INDIA HACKATHON 2026 // BLOCKCHAIN & CYBERSECURITY THEME // ZERO DATA LOSS GUARANTEE
+      </p>
+    </div>
+  </footer>
+
+  <!-- ================= JAVASCRIPT & THREE.JS LOGIC ================= -->
+  <script>
+    /* --- 1. Audio Synthesizer (Web Audio API) --- */
+    let audioCtx = null;
+    let audioMuted = false;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    }
+
+    function playTone(freq, type = 'sine', duration = 0.08, vol = 0.15) {
+      if (audioMuted) return;
+      try {
+        initAudio();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    function playHoverTone() { playTone(840, 'sine', 0.04, 0.08); }
+    function playClickTone() { playTone(440, 'triangle', 0.08, 0.2); }
+    function playAlarmTone() {
+      playTone(660, 'sawtooth', 0.15, 0.25);
+      setTimeout(() => playTone(880, 'sawtooth', 0.2, 0.25), 100);
+    }
+    function playSuccessTone() {
+      playTone(523.25, 'sine', 0.1, 0.15);
+      setTimeout(() => playTone(659.25, 'sine', 0.1, 0.15), 80);
+      setTimeout(() => playTone(783.99, 'sine', 0.18, 0.2), 160);
+    }
+
+    document.getElementById('audio-toggle-btn').addEventListener('click', () => {
+      audioMuted = !audioMuted;
+      document.getElementById('audio-icon').textContent = audioMuted ? '🔇' : '🔊';
+      document.getElementById('audio-status').textContent = audioMuted ? 'AUDIO OFF' : 'AUDIO ON';
+      if (!audioMuted) playSuccessTone();
+    });
+
+    /* --- 2. Custom Reticle Cursor Tracker --- */
+    const cursor = document.getElementById('custom-cursor');
+    const cursorCoords = document.getElementById('cursor-coords');
+    const cursorRing = document.getElementById('cursor-ring');
+
+    window.addEventListener('mousemove', (e) => {
+      cursor.style.left = e.clientX + 'px';
+      cursor.style.top = e.clientY + 'px';
+      cursorCoords.textContent = `X: ${e.clientX} | Y: ${e.clientY}`;
+    });
+
+    document.querySelectorAll('a, button, .graph-node, .protocol-card, .scenario-pill').forEach(el => {
+      el.addEventListener('mouseenter', () => {
+        cursorRing.style.width = '48px';
+        cursorRing.style.height = '48px';
+        cursorRing.style.borderColor = 'var(--cyan)';
+      });
+      el.addEventListener('mouseleave', () => {
+        cursorRing.style.width = '34px';
+        cursorRing.style.height = '34px';
+        cursorRing.style.borderColor = 'rgba(0, 243, 255, 0.4)';
+      });
+    });
+
+    /* --- 3. Three.js Background 3D Engine --- */
+    const canvas = document.getElementById('webgl-canvas');
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.z = 7;
+
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    // Ambient & Point Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    scene.add(ambientLight);
+
+    const cyanLight = new THREE.PointLight(0x00f3ff, 2, 20);
+    cyanLight.position.set(4, 3, 5);
+    scene.add(cyanLight);
+
+    const redLight = new THREE.PointLight(0xff2e4d, 1.5, 20);
+    redLight.position.set(-4, -3, 3);
+    scene.add(redLight);
+
+    // Central Cryptographic Core Group
+    const coreGroup = new THREE.Group();
+    scene.add(coreGroup);
+
+    // Inner Octahedron Core
+    const coreGeo = new THREE.OctahedronGeometry(1.1, 0);
+    const coreMat = new THREE.MeshStandardMaterial({
+      color: 0x00f3ff,
+      emissive: 0x00f3ff,
+      emissiveIntensity: 0.6,
+      roughness: 0.2,
+      metalness: 0.8
+    });
+    const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+    coreGroup.add(coreMesh);
+
+    // Outer Wire Gyro Rings
+    const gyroGeo1 = new THREE.IcosahedronGeometry(1.6, 1);
+    const gyroMat1 = new THREE.MeshBasicMaterial({ color: 0x00f3ff, wireframe: true, transparent: true, opacity: 0.3 });
+    const gyroMesh1 = new THREE.Mesh(gyroGeo1, gyroMat1);
+    coreGroup.add(gyroMesh1);
+
+    const gyroGeo2 = new THREE.IcosahedronGeometry(2.0, 1);
+    const gyroMat2 = new THREE.MeshBasicMaterial({ color: 0x2563eb, wireframe: true, transparent: true, opacity: 0.2 });
+    const gyroMesh2 = new THREE.Mesh(gyroGeo2, gyroMat2);
+    coreGroup.add(gyroMesh2);
+
+    // Orbiting Satellite Nodes (6 Protocol Nodes)
+    const satelliteGroup = new THREE.Group();
+    scene.add(satelliteGroup);
+
+    const satellites = [];
+    const satelliteData = [
+      { name: 'SPF', pos: [2.5, 1.2, 0], color: 0xff2e4d },
+      { name: 'DKIM', pos: [-2.4, 1.5, 0.5], color: 0xff2e4d },
+      { name: 'DMARC', pos: [2.6, -1.3, -0.4], color: 0xff2e4d },
+      { name: 'ARC', pos: [-2.5, -1.4, 0.2], color: 0xff2e4d },
+      { name: 'MTA-STS', pos: [0, 2.7, -0.6], color: 0xff2e4d },
+      { name: 'GEO', pos: [0, -2.6, 0.8], color: 0x00f3ff }
+    ];
+
+    satelliteData.forEach((s) => {
+      const satGeo = new THREE.SphereGeometry(0.16, 16, 16);
+      const satMat = new THREE.MeshStandardMaterial({ color: s.color, emissive: s.color, emissiveIntensity: 0.8 });
+      const satMesh = new THREE.Mesh(satGeo, satMat);
+      satMesh.position.set(...s.pos);
+      satMesh.userData = { originalPos: [...s.pos], name: s.name };
+
+      // Connector laser line to center (0,0,0)
+      const lineGeo = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(...s.pos)
+      ]);
+      const lineMat = new THREE.LineBasicMaterial({ color: s.color, transparent: true, opacity: 0.4 });
+      const lineMesh = new THREE.Line(lineGeo, lineMat);
+
+      satelliteGroup.add(satMesh);
+      satelliteGroup.add(lineMesh);
+      satellites.push({ mesh: satMesh, line: lineMesh });
+    });
+
+    // Particle Cloud (1,400 particles)
+    const particleCount = 1400;
+    const particleGeo = new THREE.BufferGeometry();
+    const particlePositions = new Float32Array(particleCount * 3);
+    for (let i = 0; i < particleCount * 3; i += 3) {
+      particlePositions[i] = (Math.random() - 0.5) * 20;
+      particlePositions[i + 1] = (Math.random() - 0.5) * 20;
+      particlePositions[i + 2] = (Math.random() - 0.5) * 20;
+    }
+    particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+    const particleMat = new THREE.PointsMaterial({
+      color: 0x00f3ff,
+      size: 0.03,
+      transparent: true,
+      opacity: 0.45
+    });
+    const particleField = new THREE.Points(particleGeo, particleMat);
+    scene.add(particleField);
+
+    // Deconstruction State
+    let isDeconstructed = false;
+    function toggleDeconstruct() {
+      isDeconstructed = !isDeconstructed;
+      playClickTone();
+      document.getElementById('deconstruct-btn').textContent = isDeconstructed ? '[ RE-SEAL TOPOLOGY ]' : '[ DECONSTRUCT 3D CORE ]';
+      
+      satellites.forEach((s) => {
+        const mult = isDeconstructed ? 1.75 : 1.0;
+        const targetX = s.mesh.userData.originalPos[0] * mult;
+        const targetY = s.mesh.userData.originalPos[1] * mult;
+        const targetZ = s.mesh.userData.originalPos[2] * mult;
+        gsap.to(s.mesh.position, { x: targetX, y: targetY, z: targetZ, duration: 1.2, ease: 'power3.out' });
+      });
+      gsap.to(coreMat, { wireframe: isDeconstructed, duration: 0.6 });
+    }
+
+    function spinCore() {
+      playClickTone();
+      gsap.to(coreGroup.rotation, { y: coreGroup.rotation.y + Math.PI * 2, duration: 1.5, ease: 'power2.inOut' });
+      gsap.to(satelliteGroup.rotation, { y: satelliteGroup.rotation.y - Math.PI * 2, duration: 1.8, ease: 'power2.inOut' });
+    }
+
+    // Animation Loop
+    let clock = new THREE.Clock();
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = clock.getDelta();
+      const elapsed = clock.getElapsedTime();
+
+      // Slow idle rotations
+      coreMesh.rotation.y += delta * 0.4;
+      coreMesh.rotation.x += delta * 0.2;
+      gyroMesh1.rotation.y -= delta * 0.25;
+      gyroMesh2.rotation.z += delta * 0.2;
+      satelliteGroup.rotation.y += delta * 0.15;
+      particleField.rotation.y -= delta * 0.04;
+
+      // Pulse core scale slightly
+      const pulse = 1 + Math.sin(elapsed * 2.5) * 0.03;
+      coreMesh.scale.set(pulse, pulse, pulse);
+
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // Window Resize
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    /* --- 4. Lenis Smooth Scroll & GSAP ScrollTrigger Integration --- */
+    const lenis = new Lenis({
+      duration: 1.2,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      smoothWheel: true
+    });
+    function raf(time) {
+      lenis.raf(time);
+      requestAnimationFrame(raf);
+    }
+    requestAnimationFrame(raf);
+
+    // Scrub 3D Core with Scroll
+    gsap.registerPlugin(ScrollTrigger);
+
+    gsap.to(camera.position, {
+      z: 5.5,
+      y: -0.5,
+      scrollTrigger: {
+        trigger: '#protocols',
+        start: 'top bottom',
+        end: 'bottom top',
+        scrub: 1
+      }
+    });
+
+    gsap.to(coreGroup.rotation, {
+      x: 1.2,
+      y: 3.5,
+      scrollTrigger: {
+        trigger: '#georadar',
+        start: 'top bottom',
+        end: 'bottom top',
+        scrub: 1.5
+      }
+    });
+
+    gsap.to(coreGroup.position, {
+      x: 2.2,
+      scrollTrigger: {
+        trigger: '#vault',
+        start: 'top bottom',
+        end: 'bottom top',
+        scrub: 1.2
+      }
+    });
+
+    /* --- 5. Interactive Web Crypto SHA-256 Tamper Engine --- */
+    const originalEvidence = `{
+  "case_id": "SM-2026-00142",
+  "from": "Satya Nadella <ceo-desk@office-microsoft-notice.com>",
+  "reply_to": "wire-processing@drop-vault-finance.top",
+  "subject": "STRICTLY CONFIDENTIAL: Wire Transfer for Q3 Project Delta",
+  "wire_amount": "$248,500.00",
+  "mta_gateway": "185.220.101.45",
+  "dmarc_verdict": "FAIL"
+}`;
+
+    let currentBuffer = originalEvidence;
+    const originalHash = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+
+    async function computeSHA256(text) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(text);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    async function verifyIntegrity() {
+      playSuccessTone();
+      const hash = await computeSHA256(currentBuffer);
+      document.getElementById('computed-sha256').textContent = hash;
+      const isClean = (hash === originalHash);
+      const badge = document.getElementById('tamper-badge');
+      if (isClean) {
+        badge.className = 'tamper-badge valid';
+        badge.textContent = '✓ INTEGRITY VERIFIED (0 BITS ALTERED)';
+        document.getElementById('computed-sha256').style.color = 'var(--cyan)';
+      } else {
+        badge.className = 'tamper-badge corrupted';
+        badge.textContent = '⚡ TAMPER DETECTED (HASH MISMATCH)';
+        document.getElementById('computed-sha256').style.color = 'var(--red)';
+      }
+    }
+
+    async function simulateTamper() {
+      playAlarmTone();
+      // Introduce a 1-character bit flip in wire_amount: $248,500 -> $948,500
+      currentBuffer = originalEvidence.replace('$248,500.00', '$948,500.00');
+      document.getElementById('evidence-buffer-box').textContent = currentBuffer;
+      const hash = await computeSHA256(currentBuffer);
+      document.getElementById('computed-sha256').textContent = hash;
+      document.getElementById('computed-sha256').style.color = 'var(--red)';
+      const badge = document.getElementById('tamper-badge');
+      badge.className = 'tamper-badge corrupted';
+      badge.textContent = '⚡ TAMPER DETECTED: WIRE_AMOUNT MODIFIED!';
+    }
+
+    async function restoreIntegrity() {
+      playClickTone();
+      currentBuffer = originalEvidence;
+      document.getElementById('evidence-buffer-box').textContent = currentBuffer;
+      const hash = await computeSHA256(currentBuffer);
+      document.getElementById('computed-sha256').textContent = hash;
+      document.getElementById('computed-sha256').style.color = 'var(--cyan)';
+      const badge = document.getElementById('tamper-badge');
+      badge.className = 'tamper-badge valid';
+      badge.textContent = '✓ INTEGRITY VERIFIED';
+    }
+
+    /* --- 6. Evidence Graph Hover Telemetry --- */
+    const telemetryData = {
+      identity: "IDENTITY NODE: Sender display name spoofed 'Satya Nadella'. Canonical domain 'office-microsoft-notice.com' is unregistered lookalike.",
+      auth: "AUTHENTICATION GATES: SPF FAIL (IP not in CIDR), DKIM MISSING (no selector), DMARC FAIL (alignment rejected).",
+      asn: "TRANSIT ROUTE: Relayed via Autonomous System AS44050 (Hosted-Bulletproof Ltd, Amsterdam NL). Frequent abuse history.",
+      url: "DIVERSION NODE: Hidden Reply-To header diverts victim responses to drop-vault-finance.top, exfiltrating credentials.",
+      payload: "PAYLOAD INTEGRITY: Raw MIME payload hashed via SHA-256: 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08.",
+      merkle: "BLOCKCHAIN ANCHOR: Block #714920 Merkle tree root signed by SOC forensic authority. Zero alteration guarantee."
+    };
+
+    function inspectNode(nodeKey) {
+      playHoverTone();
+      const text = telemetryData[nodeKey] || "Telemetry lock engaged.";
+      document.getElementById('node-telemetry-text').textContent = text;
+    }
+
+    /* --- 7. Scenario Switching in Hero --- */
+    function selectScenario(type) {
+      playClickTone();
+      document.querySelectorAll('.scenario-pill').forEach(p => p.classList.remove('active'));
+      event.target.classList.add('active');
+
+      if (type === 'bec') {
+        coreMat.color.setHex(0xff2e4d);
+        coreMat.emissive.setHex(0xff2e4d);
+      } else if (type === 'phish') {
+        coreMat.color.setHex(0xf59e0b);
+        coreMat.emissive.setHex(0xf59e0b);
+      } else if (type === 'malware') {
+        coreMat.color.setHex(0xff2e4d);
+        coreMat.emissive.setHex(0xff2e4d);
+      } else {
+        coreMat.color.setHex(0x10b981);
+        coreMat.emissive.setHex(0x10b981);
+      }
+    }
+  </script>
+</body>
+</html>

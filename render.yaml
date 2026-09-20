@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: sentinel-mesh-api
+    runtime: python
+    plan: free
+    region: oregon
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: FRONTEND_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ENABLE_MULTI_USER
+        value: "true"
+      - key: ENABLE_GMAIL
+        value: "true"
+      - key: ENABLE_THREAT_INTELLIGENCE
+        value: "true"
+      - key: ENABLE_BLOCKCHAIN
+        value: "true"

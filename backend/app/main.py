@@ -1,7 +1,7 @@
 import os
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-
+from app.gmail_pubsub import router as gmail_pubsub_router
 from app.ingestion.parser import parse_eml
 from app.headers.forensics import run_header_forensics
 from app.geoip.tracer import trace_origin
@@ -53,6 +53,7 @@ app.include_router(evidence_router)
 app.include_router(blockchain_router)
 app.include_router(gmail_router)
 app.include_router(extension_router)
+app.include_router(gmail_pubsub_router)
 
 @app.get("/api/health")
 @app.get("/health")
@@ -349,4 +350,4 @@ async def scan_email(payload: dict = None):
         attachment_result
     )
     extract_threat_events_from_report(report)
-    return report
+    return report
